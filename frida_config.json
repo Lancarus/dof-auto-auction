@@ -1,0 +1,11 @@
+{
+    "db_config": {
+        "ip": "127.0.0.1",
+        "account": "game",
+        "password": "uu5!^%jg"
+    },
+    "module_config": [
+        {"name":"module_test_1","path":"/plugins/frida/module/moduleA.js","isEnable":true},
+        {"name":"module_test_2","path":"/plugins/frida/module/moduleB.js","isEnable":true}
+    ] 
+}
