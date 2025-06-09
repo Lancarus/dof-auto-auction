@@ -31,6 +31,6 @@ module.exports = {
         //文件日志
         f_log.write('[' + timestamp + ']' + msg + '\n');
         //立即写日志到文件中
-        f_log.flush();
+        f_log.flush(); 
     }
 };
