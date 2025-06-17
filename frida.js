@@ -11,7 +11,7 @@ var fclose = new NativeFunction(Module.getExportByName(null, 'fclose'), 'int', [
 //变量
 ////////////////////////////////////////////////////////////////////////
 
-const common = {};
+const common = {}; 
 
 const global_config = {};
 const moduleCache = {}; 
