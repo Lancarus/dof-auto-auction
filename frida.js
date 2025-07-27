@@ -8,7 +8,7 @@ var fread = new NativeFunction(Module.getExportByName(null, 'fread'), 'int', ['p
 var fclose = new NativeFunction(Module.getExportByName(null, 'fclose'), 'int', ['int'], { "abi": "sysv" });
 
 ////////////////////////////////////////////////////////////////////////
-//变量
+//变量 
 ////////////////////////////////////////////////////////////////////////
 
 const common = {}; 
