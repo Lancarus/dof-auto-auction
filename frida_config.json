@@ -1,11 +1,116 @@
 {
-    "db_config": {
-        "ip": "127.0.0.1",
-        "account": "game",
-        "password": "uu5!^%jg"
+    "common": {
+        "gmCid": [
+            1
+        ],
+        "vipCid": [
+            1
+        ]
     },
-    "module_config": [
-        {"name":"module_test_1","path":"/plugins/frida/module/moduleA.js","isEnable":true},
-        {"name":"module_test_2","path":"/plugins/frida/module/moduleB.js","isEnable":true}
-    ] 
+    "base": {
+        "modules": [
+            {
+                "name": "system",
+                "path": "/plugins/frida/lib/core/core-system-manager.js",
+                "enabled": true,
+                "freeze": true
+            },
+            {
+                "name": "mysql",
+                "path": "/plugins/frida/lib/core/core-mysql-database.js",
+                "enabled": true
+            },
+            {
+                "name": "utils",
+                "path": "/plugins/frida/lib/game-utils.js",
+                "enabled": true
+            },
+            {
+                "name": "utils.cuser",
+                "path": "/plugins/frida/lib/base-cuser.js",
+                "enabled": true
+            },
+            {
+                "name": "utils.cuserCharacInfo",
+                "path": "/plugins/frida/lib/base-cuser-charac-info.js",
+                "enabled": true
+            },
+            {
+                "name": "utils.gameWorld",
+                "path": "/plugins/frida/lib/base-game-world.js",
+                "enabled": true
+            },
+            {
+                "name": "utils.cuserEx",
+                "path": "/plugins/frida/lib/extend-cuser.js",
+                "enabled": true
+            },
+            {
+                "name": "utils.gameWorldEx",
+                "path": "/plugins/frida/lib/extend-game-world.js",
+                "enabled": true
+            }
+        ]
+    },
+    "modules": [
+        {
+            "name": "GM指令",
+            "path": "/plugins/frida/module/gm-command.js",
+            "enabled": true
+        },
+        {
+            "name": "join-guild",
+            "path": "/plugins/frida/module/auto-join-guild.js",
+            "enabled": true,
+            "freeze": true
+        },
+        {
+            "name": "rank",
+            "path": "/plugins/frida/module/rank-notice.js",
+            "enabled": true
+        },
+        {
+            "name": "abyss-mode",
+            "path": "/plugins/frida/module/abyss-mode.js",
+            "enabled": true
+        },
+        {
+            "name": "linas",
+            "path": "/plugins/frida/module/linas-gift.js",
+            "enabled": true,
+            "freeze": true
+        },
+        {
+            "name": "useitem",
+            "path": "/plugins/frida/module/item-handle.js",
+            "enabled": true
+        },
+        {
+            "name": "继承",
+            "path": "/plugins/frida/module/equ-inherit.js",
+            "enabled": true
+        },
+        {
+            "name": "跨界",
+            "path": "/plugins/frida/module/equ-transfer.js",
+            "enabled": true
+        },
+        {
+            "name": "inlay",
+            "path": "/plugins/frida/module/equ-inlay.js",
+            "enabled": true,
+            "freeze": true
+        },
+        {
+            "name": "fourteen",
+            "path": "/plugins/frida/module/fourteen-keys.js",
+            "enabled": true,
+            "freeze": true
+        },
+        {
+            "name": "tarde",
+            "path": "/plugins/frida/module/trade-gold-daily.js",
+            "enabled": false
+        }
+    ]
 }

@@ -1,0 +1,12 @@
+# 旧版本/待迁移代码
+org.js
+orgin.js
+orginconfig.json
+reward.json
+
+# 半成品模块
+lib/citem.js
+module/abyss-reward.js
+
+# Claude Code 配置
+.claude/

@@ -5,7 +5,15 @@
 > 一个为DOF服务端设计的模块化Frida-Gadget框架，核心：**mini-require** 模块化系统
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Frida](https://img.shields.io/badge/Frida-Gadget-green.svg)](https://frida.re/) 
+[![Frida](https://img.shields.io/badge/Frida-Gadget-green.svg)](https://frida.re/)
+
+## 🎉 写在前面
+
+这个框架的核心 **mini-require** 其实早就写好了，本来想等把手头的功能模块都迁移完再发出来，结果... 一直没心思弄 😂
+
+索性趁着元旦把这个"娱乐版"先发出来吧！功能模块就当是画饼了，以后有心情了再慢慢迁移~
+
+**祝大家 2025 元旦快乐！🎊** 
 
 ## 📑 目录
 
@@ -35,19 +43,36 @@
 
 ```
 frida/
-├── 📄 frida.js              # 主程序入口文件
-├── ⚙️ frida_config.json     # 全局配置文件
-├── 🔧 frida.config          # Frida配置文件
-├── 📦 frida.so              # Frida动态库文件
-├── 📂 base/                 # 基础模块目录
-│   ├── 📝 base-module-sample.js  # 基础模块模板
-│   ├── 🗄️ mysql-database.js      # 数据库模块
-│   ├── 🔧 system-manager.js      # 系统管理模块
-│   └── 🛠️ utils.js               # 工具模块
-└── 📂 module/               # 功能模块目录
-    ├── 📝 module-sample.js       # 功能模块模板
-    └── ...                       # 其他功能模块
+├── 📄 frida.js                  # 主程序入口文件
+├── ⚙️ frida_config.json         # 全局配置文件
+├── 🔧 frida.config              # Frida配置文件
+├── 📦 frida.so                  # Frida动态库文件
+├── 📂 lib/                      # 基础模块目录
+│   ├── 📂 core/                 # 🔒 核心模块（系统级）
+│   │   ├── 🗄️ core-mysql-database.js   # 数据库连接模块
+│   │   └── 🔧 core-system-manager.js   # 系统管理模块
+│   ├── 📝 base-module-sample.js # 基础模块开发模板
+│   ├── 👤 base-cuser.js         # CUser基础操作封装
+│   ├── 📋 base-cuser-charac-info.js  # 角色信息操作封装
+│   ├── 🌍 base-game-world.js    # GameWorld操作封装
+│   ├── 🎁 citem.js              # 物品操作封装
+│   ├── 👤 extend-cuser.js       # CUser扩展功能
+│   ├── 🌍 extend-game-world.js  # GameWorld扩展功能
+│   └── 🛠️ game-utils.js         # 游戏通用工具函数
+└── 📂 module/                   # 功能模块目录
+    ├── 📝 module-sample.js      # 功能模块开发模板
+    ├── 🎮 gm-command.js         # GM指令模块
+    ├── 🔥 abyss-mode.js         # 深渊模式模块
+    └── ...                      # 其他功能模块
 ```
+
+### 📂 目录说明
+
+| 目录 | 说明 |
+|------|------|
+| `lib/core/` | **核心模块** - 系统级底层模块，如数据库连接、系统管理等，是框架运行的基础 |
+| `lib/` | **基础模块** - 游戏通用API封装，提供CUser、GameWorld等常用操作的便捷接口 |
+| `module/` | **功能模块** - 具体的业务功能实现，如GM指令、深渊模式等游戏功能扩展 |
 
 ## 🚀 核心特性
 
@@ -60,11 +85,47 @@ frida/
 
 ### 🔧 mini-require模块加载系统
 
-**mini-require** 是本项目的核心模块，实现了类似**Node.js**的 `require` 功能，支持：
+**mini-require** 是本项目的核心，在Frida-Gadget环境中实现了类似**Node.js**的模块化加载机制。
 
-- **📦 模块缓存** - 避免重复加载相同模块
-- **🔒 模块封装** - 每个模块都有独立的执行上下文
-- **💉 依赖注入** - 通过 `context` 对象提供全局API
+#### 核心特性
+
+- **📦 模块缓存** - 已加载的模块会被缓存，避免重复加载和执行
+- **🔒 模块封装** - 每个模块都有独立的执行上下文，互不干扰
+- **💉 依赖注入** - 通过 `context` 对象向模块注入全局API
+
+#### 实现原理
+
+```javascript
+// mini-require 核心实现
+function _require(path, context, name) {
+    // 1. 检查缓存，避免重复加载
+    if (_moduleCache[path]) return _moduleCache[path];
+
+    // 2. 读取模块源码
+    const src = readFile(path, 'r', 10 * 1024 * 1024);
+
+    // 3. 创建模块对象
+    const module = { name: name, exports: {} };
+
+    // 4. 使用 new Function 包装并执行模块代码
+    new Function("module", "context", src)(module, context);
+
+    // 5. 缓存并返回导出内容
+    _moduleCache[path] = module.exports;
+    return module.exports;
+}
+```
+
+#### 与Node.js的区别
+
+| 特性 | Node.js | mini-require |
+|------|---------|--------------|
+| 模块间引用 | `require('./other')` | ❌ 不支持，通过 `context` 共享 |
+| 循环依赖 | 部分支持 | 从设计上避免 |
+| 文件系统 | Node.js fs | Linux原生文件操作 |
+| 导出方式 | `module.exports` | `module.exports` ✓ |
+
+> **🔑 设计理念：** 模块不直接互相引用，而是通过 `context` 命名空间共享API。这种设计避免了循环依赖问题，同时支持热重载时自动更新引用。
 
 ### 🎛️ 模块管理系统
 
@@ -73,9 +134,11 @@ frida/
 - **🔄 热重载** - 通过GM命令支持运行时重新加载模块，无需重启服务器
 - **🛡️ 权限控制** - 基于角色ID的权限验证系统
 
+
 > **💡 模块设计说明：**
 > - 基础模块和功能模块的划分是根据我的习惯设计的，也可以全部放在功能模块中
-> - 基础模块通过 `context` 命名空间引用，当基础模块变化时，引用它的功能模块无需重新加载
+> - 基础模块之间不推荐相互引用，避免循环依赖和加载顺序问题
+> - 基础模块通过 `context.模块名` 命名空间引用，当基础模块变化时，引用它的功能模块无需重新加载
 > - 如果使用解构赋值 `{}` 获取基础模块对象，当基础模块变化时必须重新加载引用这些对象的功能模块
 
 ### 🎯 Hook管理系统
@@ -115,7 +178,7 @@ LD_PRELOAD="/plugins/frida/frida.so" ./df_game_r siroco15 start &
 {
   "interaction": {
     "type": "script",
-    "path": "/plugins/frida/frida.js",
+    "path": "frida.js",
      "on_change": "reload"
   }
 }
@@ -151,18 +214,23 @@ LD_PRELOAD="/plugins/frida/frida.so" ./df_game_r siroco16 start &
 
 ```json
 {
+    "common": {
+        "gmCid": [1]
+    },
     "base": {
         "modules": [
             {
-                "name": "utils",
-                "path": "/plugins/frida/base/utils.js",
+                "name": "核心模块名",
+                "path": "/plugins/frida/lib/core/核心模块文件.js",
                 "enabled": true,
                 "freeze": true
+            },
+            {
+                "name": "基础模块名",
+                "path": "/plugins/frida/lib/基础模块文件.js",
+                "enabled": true
             }
         ]
-    },
-    "common": {
-        "gmCid": [1]
     },
     "modules": [
         {
@@ -181,7 +249,7 @@ LD_PRELOAD="/plugins/frida/frida.so" ./df_game_r siroco16 start &
 | `base.modules` | 基础模块配置 |
 | `common` | 全局配置，所有模块都能通过`context.config`访问 |
 | `modules` | 功能模块配置 |
-| `name` | 模块名，重载指定模块 |
+| `name` | 模块名，非常重要！重载指定模块、基础模块的引用 |
 | `path` | 模块路径 |
 | `enabled` | 是否启用模块 |
 | `freeze` | 是否跳过重载（所有模块都支持，运行时修改需要单独重载） |
@@ -286,7 +354,7 @@ const { log } = context.main;
 const { INFO, WARN, ERROR } = context.main.LOG_LEVELS;
 
 // 推荐：通过context命名空间引用基础模块API（热重载时无需重新加载）
-// const { api_function } = context.utils;
+// 示例: context.utils.api_function()
 
 // 不推荐：使用解构赋值（基础模块变化时需要重新加载此模块）
 // const { api_function } = context.utils;
@@ -376,25 +444,22 @@ var gmCid = context.config.gmCid; // 获取GM权限角色ID列表
 // 可以访问frida_config.json中common部分的所有配置项
 ```
 
-### 🛠️ context.utils
+### 🛠️ context.基础模块名
 
-工具模块提供的API（示例）：
+基础模块通过 `context.模块名` 访问，模块名由配置文件中的 `name` 字段决定：
 
 ```javascript
-// 时间相关
-context.utils.time.getTimestamp();
-context.utils.time.getDate();
+// 通过模块名访问基础模块API
+context.utils.cinven.api_xxx();           // game-utils.js 导出的背包相关API
+context.utils.citem.api_xxx();            // game-utils.js 导出的物品相关API
 
-// 游戏系统
-context.utils.gameSystem.api_DisPatcher_DebugCommand__DebugCommandSetLevel(user, level);
-
-// 游戏世界
-context.utils.gameWorld.api_GameWorld_SendNotiPacketMessage(msg, msg_type);
-
-// 用户管理
-context.utils.gameCUser.api_CUser_AddItem(user, item_id, item_cnt);
-context.utils.gameCUser.api_CUser_Gain_Exp_Sp(user, exp);
+// 带点号的模块名需要用括号访问
+context['utils.cuser'].api_CUser_AddItem(user, item_id, item_cnt);
+context['utils.cuser'].api_CUser_Gain_Exp_Sp(user, exp);
+context['utils.gameWorld'].api_GameWorld_SendNotiPacketMessage(msg, msg_type);
 ```
+
+> **💡 提示：** 模块名支持使用点号（如 `utils.cuser`）来组织命名空间，访问时需要使用 `context['模块名']` 语法。
 
 ## 🎯 Hook配置
 
@@ -476,13 +541,13 @@ hooks: [
 ```javascript
 // 推荐：通过context命名空间引用（热重载时无需重新加载）
 function myFunction() {
-    context.utils.gameCUser.api_CUser_AddItem(user, item_id, count);
-    context.utils.time.getTimestamp();
+    context['utils.cuser'].api_CUser_AddItem(user, item_id, count);
+    context.utils.cinven.api_xxx();
 }
 
 // 不推荐：解构赋值（基础模块变化时需要重新加载此模块）
-const { api_CUser_AddItem } = context.utils.gameCUser;
-const { getTimestamp } = context.utils.time;
+const { api_CUser_AddItem } = context['utils.cuser'];
+const { cinven } = context.utils;
 ```
 
 > **💡 重要说明：**
@@ -588,6 +653,7 @@ const { getTimestamp } = context.utils.time;
 | 🐛 **错误处理** | Hook函数中的异常会被捕获并记录到日志 |
 | 🏗️ **模块设计** | 基础模块和功能模块的划分可根据开发习惯调整，也可以全部放在功能模块中 |
 | 🔗 **API引用** | 建议使用`context`命名空间引用基础模块API，避免解构赋值导致的热重载问题 |
+| ⚠️ **基础模块引用** | **基础模块之间不推荐相互引用**，特殊情况必须引用时需调整配置文件中的加载顺序 |
 | 🧊 **freeze属性** | 所有模块都支持`freeze`属性，只有将`freeze`从`true`改为`false`时需要单独重载 |
 | 📝 **模块名称** | 配置文件中的`name`字段很重要，GM重载模块就是根据这个`name`来识别的 |
 
@@ -600,4 +666,3 @@ const { getTimestamp } = context.utils.time;
 *本文档基于项目当前版本编写，如有更新请参考最新代码实现。*
 
 </div>
-
