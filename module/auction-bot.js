@@ -54,6 +54,7 @@ var _running = false;
 var _engines = {};
 var _lastPriceSnapshot = 0;
 var _lastMailPoll = 0;
+var _configLoaded = false;
 
 ////////////////////////////////////////////////////////////////////////
 // 函数 - 工具
@@ -61,16 +62,19 @@ var _lastMailPoll = 0;
 
 /** 获取DB配置（带默认值回退） */
 function _getConfigInt(key, defaultVal) {
+    if (!auction.isReady || !auction.isReady()) return defaultVal;
     var val = auction.getBotConfig(key);
     return val !== null ? parseInt(val, 10) : defaultVal;
 }
 
 function _getConfigFloat(key, defaultVal) {
+    if (!auction.isReady || !auction.isReady()) return defaultVal;
     var val = auction.getBotConfig(key);
     return val !== null ? parseFloat(val) : defaultVal;
 }
 
 function _getConfigBool(key, defaultVal) {
+    if (!auction.isReady || !auction.isReady()) return defaultVal;
     var val = auction.getBotConfig(key);
     if (val === null) return defaultVal;
     return val === '1' || val === 'true';
@@ -83,6 +87,14 @@ function _floorInt(value, floor) {
 
 /** 从DB刷新配置 */
 function _reloadConfig() {
+    if (!auction.isReady || !auction.isReady()) {
+        _engines.sniper.enabled = false;
+        _engines.lister.enabled = false;
+        _engines.bidder.enabled = false;
+        _engines.restocker.enabled = false;
+        return false;
+    }
+
     try {
         _config.snipingInterval = _floorInt(_getConfigInt('sniping_interval_s', _config.snipingInterval), 900);
         _config.listingInterval = _floorInt(_getConfigInt('listing_interval_s', _config.listingInterval), 300);
@@ -102,6 +114,7 @@ function _reloadConfig() {
         _engines.lister.enabled = _getConfigBool('listing_enabled', false);
         _engines.bidder.enabled = _getConfigBool('bidding_enabled', false);
         _engines.restocker.enabled = _getConfigBool('restocking_enabled', false);
+        _configLoaded = true;
     } catch (e) {
         log(WARN, '[auction-bot] 配置加载失败，使用默认配置: ' + e);
         _engines.sniper.enabled = false;
@@ -114,6 +127,7 @@ function _reloadConfig() {
     _engines.lister.interval = _config.listingInterval;
     _engines.bidder.interval = _config.biddingInterval;
     _engines.restocker.interval = _config.restockingInterval;
+    return _configLoaded;
 }
 
 // ---- 行为模拟 ----
@@ -587,6 +601,11 @@ function _timerTick() {
     var now = api_CSystemTime_getCurSec();
 
     try {
+        if (!_configLoaded && !_reloadConfig()) {
+            api_ScheduleOnMainThread_Delay(_timerTick, [], 5000);
+            return;
+        }
+
         // 狙击引擎
         if (_engines.sniper.enabled && (now - _engines.sniper.lastRun >= _engines.sniper.interval)) {
             _engines.sniper.tick();
@@ -1049,8 +1068,8 @@ module.exports = {
         _engines.bidder = _bidder;
         _engines.restocker = _restocker;
 
-        // 从DB加载配置
-        _reloadConfig();
+        // DB表由 base-auction 延迟初始化。这里不阻塞登录流程，交给首次 timer tick 再加载。
+        _configLoaded = false;
 
         // 启动定时器
         _running = true;
