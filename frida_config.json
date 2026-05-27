@@ -1,11 +1,17 @@
 {
     "common": {
         "gmCid": [
-            1
+            2
         ],
         "vipCid": [
-            1
-        ]
+            2
+        ],
+        "db": {
+            "ip": "127.0.0.1",
+            "port": 3306,
+            "userName": "game",
+            "password": "uu5!^%jg"
+        }
     },
     "base": {
         "modules": [
@@ -48,6 +54,11 @@
             {
                 "name": "utils.gameWorldEx",
                 "path": "/plugins/frida/lib/extend-game-world.js",
+                "enabled": true
+            },
+            {
+                "name": "utils.auction",
+                "path": "/plugins/frida/lib/base-auction.js",
                 "enabled": true
             }
         ]
@@ -111,6 +122,11 @@
             "name": "tarde",
             "path": "/plugins/frida/module/trade-gold-daily.js",
             "enabled": false
+        },
+        {
+            "name": "auction-bot",
+            "path": "/plugins/frida/module/auction-bot.js",
+            "enabled": true
         }
     ]
 }

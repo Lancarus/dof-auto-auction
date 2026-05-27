@@ -508,8 +508,10 @@ function _andonglishanbai_Equipment_inlay() {//装备镶嵌
         //每个物品占137字节 所以每个物品的偏移量是137
         var JewelSocketData = Memory.alloc(30)
         var count = src.add(5).readU8()//获取上架物品数量
+        var debugIds = [];
         for (var i = 0; i < count; i++) {//遍历写入数据
             var item_id = src.add(54 + 137 * i).readU32();
+            if (i < 12) debugIds.push(item_id);
             var item = api_CDataManager_Find_Item(item_id);
             var item_groupname = CItem_GetItemGroupName(item)
             if (item_groupname > 0 && item_groupname < 59) {//1-58是装备
@@ -517,6 +519,7 @@ function _andonglishanbai_Equipment_inlay() {//装备镶嵌
                 Memory.copy(src.add(106 + i * 137), JewelSocketData, 30);
             }
         }
+        log(INFO, '[DEBUG-auction-result] count=' + count + ' item_ids=' + debugIds.join(','));
         var ret = Inter_AuctionResultItemList_dispatch_sig(Inter_AuctionResultMyRegistedItems, CUser, src, a4)
         return ret;
     }, 'int', ['pointer', 'pointer', 'pointer', 'int']));

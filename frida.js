@@ -383,9 +383,17 @@ const globalContext = (() => {
 						context.main.log(LOG_LEVELS.WARN, `[Registry] Module '${moduleConfig.name}' (Hook index ${index}) is missing an 'address' property. This hook will be skipped.`);
 				});
 
-				// 基础模块将其api添加到全局对象上
-				if (moduleConfig.isBaseModule)
-					context[moduleConfig.name] = moduleInstance.exports.api ?? moduleInstance.exports;
+				// 基础模块将其api添加到全局对象上（支持点分嵌套，如 utils.cuser -> context.utils.cuser）
+				if (moduleConfig.isBaseModule) {
+					const parts = moduleConfig.name.split('.');
+					let target = context;
+					for (let i = 0; i < parts.length - 1; i++) {
+						if (target[parts[i]] === undefined || target[parts[i]] === null)
+							target[parts[i]] = {};
+						target = target[parts[i]];
+					}
+					target[parts[parts.length - 1]] = moduleInstance.exports.api ?? moduleInstance.exports;
+				}
 				this._loadedModules.set(moduleConfig.name, moduleInstance);
 
 				context.main.log(`[Module] '${moduleConfig.name}' loaded successfully.`);
@@ -415,9 +423,20 @@ const globalContext = (() => {
 					_hookManager.unregister(hookInfo.address, moduleName);
 				});
 
-				// 如果是基础模块，还需要从全局里删除
-				if (moduleInstance.config.isBaseModule)
-					delete context[moduleName];
+				// 如果是基础模块，还需要从全局里删除（支持点分嵌套）
+				if (moduleInstance.config.isBaseModule) {
+					const parts = moduleName.split('.');
+					if (parts.length === 1) {
+						delete context[moduleName];
+					} else {
+						let target = context;
+						for (let i = 0; i < parts.length - 1; i++) {
+							if (!target[parts[i]]) break;
+							target = target[parts[i]];
+						}
+						delete target[parts[parts.length - 1]];
+					}
+				}
 				delete _moduleCache[moduleInstance.config.path];
 				this._loadedModules.delete(moduleName);
 

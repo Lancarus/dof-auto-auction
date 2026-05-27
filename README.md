@@ -58,11 +58,13 @@ frida/
 │   ├── 🎁 citem.js              # 物品操作封装
 │   ├── 👤 extend-cuser.js       # CUser扩展功能
 │   ├── 🌍 extend-game-world.js  # GameWorld扩展功能
+│   ├── 🏪 base-auction.js       # 拍卖行基础模块
 │   └── 🛠️ game-utils.js         # 游戏通用工具函数
 └── 📂 module/                   # 功能模块目录
     ├── 📝 module-sample.js      # 功能模块开发模板
     ├── 🎮 gm-command.js         # GM指令模块
     ├── 🔥 abyss-mode.js         # 深渊模式模块
+    ├── 🤖 auction-bot.js        # 拍卖行机器人模块
     └── ...                      # 其他功能模块
 ```
 
@@ -534,7 +536,57 @@ hooks: [
 3. 在 `frida_config.json` 中添加模块配置
 4. 使用 `//reload cfg` 命令重载模块
 
+### 🤖 拍卖行机器人 (auction-bot)
 
+模拟真实玩家拍卖行行为的自动化模块，通过假人角色实现物品上架、竞价、扫货、补货和价格波动。
+
+#### 🎮 GM命令
+
+| 命令 | 说明 |
+|------|------|
+| `//au status` | 查看所有引擎状态 |
+| `//au snip on\|off\|now` | 狙击引擎：收购低于系统价的玩家物品 |
+| `//au list on\|off\|now` | 上架引擎：假人角色随机上架物品 |
+| `//au bid on\|off\|now` | 竞价引擎：假人对即将到期物品出价 |
+| `//au restock on\|off\|now` | 补货引擎：系统自动补货维持供应量 |
+| `//au config <key> [value]` | 读取/设置配置参数 |
+| `//au chars` | 查看假人角色列表及每日统计 |
+| `//au char add <name> [role]` | 添加假人角色到拍卖池 |
+| `//au char remove <name>` | 从拍卖池移除假人角色 |
+| `//au char role <name> seller\|bidder\|both` | 设置假人角色类型 |
+| `//au stats <itemId>` | 查看物品市场统计 |
+| `//au reload` | 从数据库重新加载配置 |
+| `//au help` | 显示命令帮助 |
+
+#### ⚙️ 可配置参数
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `sniping_enabled` | 0 | 狙击引擎开关 |
+| `listing_enabled` | 0 | 上架引擎开关 |
+| `bidding_enabled` | 0 | 竞价引擎开关 |
+| `restocking_enabled` | 0 | 补货引擎开关 |
+| `sniping_interval_s` | 30 | 狙击扫描间隔(秒) |
+| `sniping_price_ratio` | 0.70 | 收购价格比例 |
+| `listing_profit_margin` | 1.30 | 上架利润系数 |
+| `enable_behavior_sim` | 1 | 行为模拟开关(价格随机化/高峰时段) |
+| `price_randomization` | 0.15 | 价格随机化范围(±15%) |
+
+#### 📊 数据库表
+
+模块在 `frida` 库自动创建以下表：
+
+| 表名 | 说明 |
+|------|------|
+| `auction_whitelist` | 白名单物品(item_id, system_price, quantity...) |
+| `auction_system_config` | 系统卖家身份配置 |
+| `auction_bot_characters` | 假人角色池(charac_no, role, 利润率, 每日限额) |
+| `auction_bot_config` | 运行时配置参数 |
+| `auction_bot_log` | 操作审计日志 |
+| `auction_price_history` | 价格历史快照(价格波动算法) |
+| `pending_mail` | 待发邮件队列(金币返还) |
+
+> **💡 使用流程：** 先配置白名单和系统卖家，再通过 `//au char add` 添加假人，最后开启引擎。
 
 ### 🔗 API引用最佳实践
 
