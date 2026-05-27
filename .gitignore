@@ -10,3 +10,5 @@ module/abyss-reward.js
 
 # Claude Code 配置
 .claude/
+
+.env
