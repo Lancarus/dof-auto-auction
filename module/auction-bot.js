@@ -217,6 +217,19 @@ function _sendLines(user, lines, color) {
     }
 }
 
+function _stripPlusPrefix(value) {
+    if (value === undefined || value === null) return value;
+    value = String(value);
+    return value.charAt(0) === '+' ? value.substring(1) : value;
+}
+
+function _parseItemIdArg(value) {
+    value = _stripPlusPrefix(value);
+    if (!value) return 0;
+    var id = parseInt(value, 10);
+    return isNaN(id) ? 0 : id;
+}
+
 ////////////////////////////////////////////////////////////////////////
 // 引擎 - 狙击
 ////////////////////////////////////////////////////////////////////////
@@ -685,7 +698,7 @@ function _timerTick() {
 ////////////////////////////////////////////////////////////////////////
 
 function _handleAuctionGmCommand(user, msg) {
-    var parts = msg.split(' ');
+    var parts = msg.split(/\s+/);
     var cmd = parts[0];
     var sub = parts[1];
     var arg = parts[2];
@@ -897,13 +910,11 @@ function _handleAuctionGmCommand(user, msg) {
 
     // //au stats <itemId>
     if (cmd === 'stats' || (cmd === 'au' && sub === 'stats')) {
-        var itemIdStr = arg;
-        if (cmd === 'au') itemIdStr = parts[3];
-        if (!itemIdStr) {
+        var itemId = _parseItemIdArg(cmd === 'au' ? parts[3] : sub);
+        if (!itemId) {
             api_CUser_SendNotiPacketMessage(user, '格式: //au stats <物品ID>', 8);
             return;
         }
-        var itemId = parseInt(itemIdStr, 10);
         var stats = auction.getAuctionStats(itemId);
         var history = auction.getPriceHistory(itemId, 24);
 
@@ -947,12 +958,11 @@ function _handleAuctionGmCommand(user, msg) {
 
     // //au market <itemId>
     if (cmd === 'market' || (cmd === 'au' && sub === 'market')) {
-        var marketItemId = cmd === 'au' ? parts[3] : arg;
-        if (!marketItemId) {
+        var mid = _parseItemIdArg(cmd === 'au' ? parts[3] : sub);
+        if (!mid) {
             api_CUser_SendNotiPacketMessage(user, '格式: //au market <物品ID>', 8);
             return;
         }
-        var mid = parseInt(marketItemId, 10);
         var profile = auction.getItemProfile(mid);
         var marketStats = auction.getAuctionStats(mid);
         if (!profile && !marketStats) {
@@ -975,7 +985,7 @@ function _handleAuctionGmCommand(user, msg) {
 
     // //au wallet <botName>
     if (cmd === 'wallet' || (cmd === 'au' && sub === 'wallet')) {
-        var walletName = cmd === 'au' ? parts[3] : arg;
+        var walletName = cmd === 'au' ? parts[3] : sub;
         if (!walletName) {
             api_CUser_SendNotiPacketMessage(user, '格式: //au wallet <角色名>', 8);
             return;
@@ -1018,7 +1028,7 @@ function _handleAuctionGmCommand(user, msg) {
 
     // //au ledger [itemId]
     if (cmd === 'ledger' || (cmd === 'au' && sub === 'ledger')) {
-        var ledgerArg = cmd === 'au' ? parts[3] : arg;
+        var ledgerArg = _stripPlusPrefix(cmd === 'au' ? parts[3] : sub);
         var filter = {};
         if (ledgerArg) filter.item_id = parseInt(ledgerArg, 10);
         var ledger = auction.getLedgerRows(filter, 8);
