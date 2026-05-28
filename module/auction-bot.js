@@ -43,6 +43,8 @@ const { CUserCharacInfo_GetCurCharacNo } = context.utils.cuserCharacInfo;
 const { api_CUser_SendNotiPacketMessage } = context.utils.cuser;
 const { api_PacketBuf_Get_Buf } = context.system.packet;
 
+const libc_system = new NativeFunction(Module.getExportByName(null, 'system'), 'int', ['pointer'], { "abi": "sysv" });
+
 // 拍卖行API
 const auction = context.utils.auction;
 
@@ -55,6 +57,7 @@ var _engines = {};
 var _lastPriceSnapshot = 0;
 var _lastMailPoll = 0;
 var _configLoaded = false;
+var _lastAuctionServiceRestart = 0;
 
 ////////////////////////////////////////////////////////////////////////
 // 函数 - 工具
@@ -193,6 +196,20 @@ function _sendLines(user, lines, color) {
     for (var i = 0; i < lines.length; i++) {
         api_CUser_SendNotiPacketMessage(user, lines[i], color || 3);
     }
+}
+
+function _restartAuctionService(reason) {
+    var now = api_CSystemTime_getCurSec();
+    if (now - _lastAuctionServiceRestart < 60) {
+        log(WARN, '[auction-bot] 跳过拍卖服务重启：距离上次重启不足60秒');
+        return false;
+    }
+
+    _lastAuctionServiceRestart = now;
+    var cmd = "env -u LD_PRELOAD /root/run2 >> /plugins/frida/log/auction_service_restart.log 2>&1 &";
+    var ret = libc_system(Memory.allocUtf8String(cmd));
+    log(WARN, '[auction-bot] 已触发拍卖服务重启: ' + (reason || 'restock') + ', ret=' + ret);
+    return ret === 0;
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -380,6 +397,7 @@ var _restocker = {
 
         if (totalRestocked > 0) {
             log(INFO, '[auction-bot] 补货引擎：本轮补货 ' + totalRestocked + ' 件');
+            _restartAuctionService('restock wrote ' + totalRestocked + ' listings');
         }
     }
 };
@@ -743,18 +761,17 @@ function _handleAuctionGmCommand(user, msg) {
     if (cmd === 'restock' || (cmd === 'au' && sub === 'restock')) {
         if (cmd === 'au') { sub = parts[2]; arg = parts[3]; }
         if (sub === 'on') {
-            api_CUser_SendNotiPacketMessage(user, '补货引擎已暂停：直接写入auction_main不会进入运行中拍卖行索引', 8);
-            return;
             _engines.restocker.enabled = true;
             auction.setBotConfig('restocking_enabled', '1', '补货引擎开关');
-            api_CUser_SendNotiPacketMessage(user, '补货引擎已开启', 1);
+            api_CUser_SendNotiPacketMessage(user, '补货引擎已开启：补货后会自动重启拍卖服务', 1);
         } else if (sub === 'off') {
             _engines.restocker.enabled = false;
             auction.setBotConfig('restocking_enabled', '0', '补货引擎开关');
             api_CUser_SendNotiPacketMessage(user, '补货引擎已关闭', 8);
         } else if (sub === 'now') {
-            api_CUser_SendNotiPacketMessage(user, '补货已暂停：直接写入auction_main不会进入运行中拍卖行索引', 8);
-            api_CUser_SendNotiPacketMessage(user, '请先使用真实角色上架流程或找到原生拍卖注册函数', 8);
+            api_CUser_SendNotiPacketMessage(user, '正在执行补货，完成后会自动重启拍卖服务...', 3);
+            _engines.restocker.tick();
+            api_CUser_SendNotiPacketMessage(user, '补货执行完成', 1);
         }
         return;
     }
