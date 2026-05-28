@@ -201,6 +201,16 @@ function _getAuctionOwnerName(botChar) {
     return 'bot_' + (botChar && botChar.charac_no ? botChar.charac_no : 'seller');
 }
 
+function _makeRestockOwner(itemId, sequence) {
+    var ownerId = 9000000 + (itemId % 100000) * 100 + (sequence % 100);
+    return {
+        owner_id: ownerId,
+        owner_name: 'GMTool',
+        owner_type: 0,
+        owner_nexon_id: String(ownerId)
+    };
+}
+
 function _sendLines(user, lines, color) {
     for (var i = 0; i < lines.length; i++) {
         api_CUser_SendNotiPacketMessage(user, lines[i], color || 3);
@@ -346,7 +356,7 @@ var _restocker = {
             need = Math.min(need, maxRestocks - totalRestocked);
 
             for (var i = 0; i < need; i++) {
-                var seller = botChars[(totalRestocked + i) % botChars.length];
+                var owner = _makeRestockOwner(wl.item_id, current + i + 1);
                 var pos = current + i;
                 var addInfo = _pickListingQuantity(wl);
                 if (pos >= targetRecords - 1) {
@@ -360,10 +370,10 @@ var _restocker = {
                 unitPrice = _randomizePrice(unitPrice);
 
                 var listing = {
-                    owner_id: seller.charac_no,
-                    owner_name: _getAuctionOwnerName(seller),
-                    owner_type: 0,
-                    owner_nexon_id: String(seller.m_id || 0),
+                    owner_id: owner.owner_id,
+                    owner_name: owner.owner_name,
+                    owner_type: owner.owner_type,
+                    owner_nexon_id: owner.owner_nexon_id,
                     item_id: wl.item_id,
                     unit_price: unitPrice,
                     add_info: addInfo,
@@ -373,13 +383,13 @@ var _restocker = {
                 };
 
                 if (auction.listAuctionItem(listing)) {
-                    auction.logOperation('restock', wl.item_id, 0, seller.charac_no, 0, unitPrice, addInfo,
-                        '假人补货: ' + seller.charac_name + ' - ' + (wl.cname || wl.item_id) + ' x' + addInfo + ' @ ' + unitPrice);
+                    auction.logOperation('restock', wl.item_id, 0, owner.owner_id, 0, unitPrice, addInfo,
+                        '假人补货: ' + owner.owner_name + '#' + owner.owner_id + ' - ' + (wl.cname || wl.item_id) + ' x' + addInfo + ' @ ' + unitPrice);
                     auction.logEconomyEvent({
                         event_type: 'restock',
                         source: 'plugin',
                         actor_type: 'bot',
-                        actor_id: seller.charac_no,
+                        actor_id: owner.owner_id,
                         counterparty_type: 'market',
                         counterparty_id: 0,
                         item_id: wl.item_id,
