@@ -574,6 +574,8 @@ hooks: [
 
 #### 📊 数据库表
 
+普通拍卖行使用 `taiwan_cain_auction_gold.auction_main`。`taiwan_cain_auction_cera` 是金币寄售/点券拍卖服务使用的库，对应 `df_point_r`，不要把普通拍卖补货写到 cera 库。
+
 模块在 `frida` 库自动创建以下表：
 
 | 表名 | 说明 |
@@ -586,7 +588,32 @@ hooks: [
 | `auction_price_history` | 价格历史快照(价格波动算法) |
 | `pending_mail` | 待发邮件队列(金币返还) |
 
-> **💡 使用流程：** 先配置白名单和系统卖家，再通过 `//au char add` 添加假人，最后开启引擎。
+#### ⚠️ 补货和拍卖服务约束
+
+`//au restock now` 会直接写入普通拍卖行的 `auction_main`。写入后如果需要立即让游戏内拍卖行索引看到变化，需要重启普通拍卖服务：
+
+```bash
+/root/run2
+```
+
+`/root/run2` 只重启 `df_auction_r`，使用 `/home/neople/auction/cfg/auction_siroco.cfg`，并检查 `30803` 端口是否监听。它不重启 `df_point_r`；`df_point_r` 是金币寄售/点券拍卖服务，监听 `30603`。
+
+直接写 `auction_main` 时必须满足拍卖服务注册约束，否则 `/root/run2` 会失败并在 `/home/neople/auction/log/run2_start.log` 中出现：
+
+```text
+Fail to RegistItem() from DB. process exits.
+```
+
+已知约束：
+
+- `expire_time` 是 Unix 时间戳，查询时使用 `UNIX_TIMESTAMP()` 比较，不要用 `NOW()`。
+- 不要写 `owner_type=1, owner_id=0` 的系统卖家行。
+- `owner_type=0` 可用，但同一个 `owner_id` 不能挂太多同物品记录。实测 `item_id=3037` 同一 owner 2 条、5 条可启动，10 条会触发 `RegistItem()` 失败；10 个不同 owner 各 1 条可启动。
+- 补货引擎使用 `GMTool` 风格的不同 owner 写入补货行，避免同一卖家超过拍卖服务限制。
+- 避免在 `owner_name` 写入非 ASCII 名称。错误编码的中文名会在拍卖服务启动时出现 `iconv error`，并可能导致注册失败。
+- 堆叠物数量要保持合法。`item_id=3037` 使用 `add_info=100` 已验证可注册。
+
+> **💡 使用流程：** 先配置白名单和系统卖家，再通过 `//au char add` 添加假人，最后开启引擎。补货变更后用 `/root/run2` 验证普通拍卖服务能正常注册。
 
 ### 🔗 API引用最佳实践
 

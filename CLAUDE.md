@@ -113,4 +113,14 @@ Auction house automation via fake player characters. Controlled through `//au` p
 
 **Key GM commands**: `//au status`, `//au snip|list|bid|restock on|off|now`, `//au config <key> [value]`, `//au char add|remove|role <name>`, `//au stats <itemId>`, `//au reload`.
 
+**Auction service restart**: On the VM, `/root/run2` restarts only the normal auction service (`df_auction_r`) for `auction_siroco.cfg` and validates that port `30803` is listening. It does not restart `df_point_r`; point/CERA service listens on `30603` and uses `point_siroco.cfg`.
+
+**`auction_main` write constraints**:
+- `expire_time` is stored as a Unix timestamp. Queries must compare it with `UNIX_TIMESTAMP()`, not `NOW()`.
+- Do not create normal-auction restock rows with `owner_type=1, owner_id=0`; `df_auction_r` can exit during startup with `Fail to RegistItem() from DB. process exits.`
+- `owner_type=0` rows are accepted, but `df_auction_r` rejects too many active rows for the same `owner_id` and item. Probes on `item_id=3037` showed 2 and 5 rows for one owner start successfully, while 10 rows for the same owner reproduce `Fail to RegistItem()`. Ten rows with distinct owners start successfully.
+- Restock rows therefore use GMTool-style distinct owners instead of a single configured seller character: ASCII `owner_name='GMTool'`, `owner_type=0`, and a generated `owner_id/owner_nexon_id`.
+- Keep stackable restock rows at valid stack sizes. For `item_id=3037`, `add_info=100` is known to register.
+- Avoid non-ASCII `owner_name` in direct `auction_main` writes. Badly encoded owner names produced `iconv error` during auction service startup.
+
 **Hook**: Chat address `0x820BBDE` (attaches alongside `gm-command.js` via hook chaining).
