@@ -55,6 +55,7 @@ var _engines = {};
 var _lastPriceSnapshot = 0;
 var _lastMailPoll = 0;
 var _configLoaded = false;
+var _lastRestockerEnabled = false;
 
 ////////////////////////////////////////////////////////////////////////
 // 函数 - 工具
@@ -114,6 +115,10 @@ function _reloadConfig() {
         _engines.lister.enabled = _getConfigBool('listing_enabled', false);
         _engines.bidder.enabled = _getConfigBool('bidding_enabled', false);
         _engines.restocker.enabled = _getConfigBool('restocking_enabled', false);
+        if (_engines.restocker.enabled && !_lastRestockerEnabled) {
+            _engines.restocker.lastRun = 0;
+        }
+        _lastRestockerEnabled = _engines.restocker.enabled;
         _configLoaded = true;
     } catch (e) {
         log(WARN, '[auction-bot] 配置加载失败，使用默认配置: ' + e);
@@ -174,8 +179,8 @@ function _getMarketItems(limit, includeNoise) {
             profiles[i].quantity = profiles[i].max_total_quantity || profiles[i].max_listings || 1;
             profiles[i].stack_size = profiles[i].preferred_stack_max || 1;
             profiles[i].upgrade = 0;
-            profiles[i].endurance = 35;
-            profiles[i].seal_flag = 1;
+            profiles[i].endurance = 0;
+            profiles[i].seal_flag = 0;
         }
         return profiles;
     }
@@ -185,8 +190,15 @@ function _getMarketItems(limit, includeNoise) {
 function _pickListingQuantity(profile) {
     var min = profile.preferred_stack_min || 1;
     var max = profile.preferred_stack_max || profile.stack_size || 1;
+    max = Math.min(max, 100);
+    min = Math.min(min, max);
+    if (max >= 100) return 100;
     if (max < min) max = min;
     return min + Math.floor(Math.random() * (max - min + 1));
+}
+
+function _getAuctionOwnerName(botChar) {
+    return 'bot_' + (botChar && botChar.charac_no ? botChar.charac_no : 'seller');
 }
 
 function _sendLines(user, lines, color) {
@@ -232,7 +244,7 @@ var _sniper = {
                 "FROM auction_main a WHERE a.owner_type = 0 AND a.item_id = " + wl.item_id +
                 " AND a.unit_price < " + Math.floor(wl.system_price * ratio) +
                 " AND a.occ_time < DATE_SUB(NOW(), INTERVAL 10 MINUTE)" +
-                " AND a.expire_time > NOW() LIMIT " + (maxSnipes - sniped);
+                " AND a.expire_time > UNIX_TIMESTAMP() LIMIT " + (maxSnipes - sniped);
 
             if (!auction.execSql(auctionDb, sql)) continue;
 
@@ -298,8 +310,11 @@ var _restocker = {
         var whitelist = _getMarketItems(300, false);
         if (whitelist.length === 0) return;
 
-        var seller = auction.getSystemSeller();
-        if (!seller) return;
+        var botChars = auction.getActiveBotCharacters('seller');
+        if (botChars.length === 0) {
+            log(WARN, '[auction-bot] 补货引擎：没有可用的卖家假人，跳过补货');
+            return;
+        }
 
         var maxRestocks = Math.floor(_config.maxRestocksPerCycle * _activityMultiplier());
         var totalRestocked = 0;
@@ -310,11 +325,11 @@ var _restocker = {
             var targetRecords = wl.max_listings || Math.ceil(wl.quantity / stackSize);
             var targetQuantity = wl.min_total_quantity || wl.quantity || stackSize;
 
-            // 查询当前系统在售数量
+            // 查询当前 bot 在售数量。拍卖服务启动注册不接受 owner_type=1/owner_id=0 的系统补货行。
             var auctionDb = auction.getAuctionDb();
             if (!auctionDb) continue;
 
-            var sql = "SELECT COUNT(*), COALESCE(SUM(add_info),0) FROM auction_main WHERE item_id = " + wl.item_id + " AND owner_type = " + seller.owner_type + " AND expire_time > NOW()";
+            var sql = "SELECT COUNT(*), COALESCE(SUM(add_info),0) FROM auction_main WHERE item_id = " + wl.item_id + " AND owner_type = 0 AND expire_time > UNIX_TIMESTAMP()";
             if (!auction.execSql(auctionDb, sql)) continue;
 
 
@@ -331,11 +346,13 @@ var _restocker = {
             need = Math.min(need, maxRestocks - totalRestocked);
 
             for (var i = 0; i < need; i++) {
+                var seller = botChars[(totalRestocked + i) % botChars.length];
                 var pos = current + i;
                 var addInfo = _pickListingQuantity(wl);
                 if (pos >= targetRecords - 1) {
                     // 最后一条可能不满堆
-                    addInfo = Math.max(1, wl.quantity - (targetRecords - 1) * stackSize);
+                    addInfo = Math.max(1, Math.min(100, wl.quantity - (targetRecords - 1) * stackSize));
+                    if ((wl.preferred_stack_max || wl.stack_size || 1) >= 100) addInfo = 100;
                 }
 
                 var basePrice = auction.calculateMarketPrice(wl.system_price, wl.item_id);
@@ -343,10 +360,10 @@ var _restocker = {
                 unitPrice = _randomizePrice(unitPrice);
 
                 var listing = {
-                    owner_id: seller.owner_id,
-                    owner_name: seller.owner_name,
-                    owner_type: seller.owner_type,
-                    owner_nexon_id: seller.owner_nexon_id,
+                    owner_id: seller.charac_no,
+                    owner_name: _getAuctionOwnerName(seller),
+                    owner_type: 0,
+                    owner_nexon_id: String(seller.m_id || 0),
                     item_id: wl.item_id,
                     unit_price: unitPrice,
                     add_info: addInfo,
@@ -356,13 +373,13 @@ var _restocker = {
                 };
 
                 if (auction.listAuctionItem(listing)) {
-                    auction.logOperation('restock', wl.item_id, 0, seller.owner_id, 0, unitPrice, addInfo,
-                        '补货: ' + (wl.cname || wl.item_id) + ' x' + addInfo + ' @ ' + unitPrice);
+                    auction.logOperation('restock', wl.item_id, 0, seller.charac_no, 0, unitPrice, addInfo,
+                        '假人补货: ' + seller.charac_name + ' - ' + (wl.cname || wl.item_id) + ' x' + addInfo + ' @ ' + unitPrice);
                     auction.logEconomyEvent({
                         event_type: 'restock',
                         source: 'plugin',
-                        actor_type: 'system',
-                        actor_id: seller.owner_id,
+                        actor_type: 'bot',
+                        actor_id: seller.charac_no,
                         counterparty_type: 'market',
                         counterparty_id: 0,
                         item_id: wl.item_id,
@@ -371,7 +388,7 @@ var _restocker = {
                         total_price: unitPrice * addInfo,
                         gold_delta: 0,
                         item_delta: addInfo,
-                        reason: '系统补货'
+                        reason: '假人补货'
                     });
                     totalRestocked++;
                 }
@@ -441,7 +458,7 @@ var _lister = {
 
             var listing = {
                 owner_id: ch.charac_no,
-                owner_name: ch.charac_name,
+                owner_name: _getAuctionOwnerName(ch),
                 owner_type: 0, // 玩家类型
                 owner_nexon_id: '0',
                 item_id: wl.item_id,
@@ -517,7 +534,7 @@ var _bidder = {
             // 查询即将到期且bid_price低于unit_price的拍卖
             var sql = "SELECT auction_id, item_id, unit_price, COALESCE(price, unit_price) as bid_price, owner_id " +
                 "FROM auction_main WHERE item_id = " + wl.item_id +
-                " AND expire_time > NOW() AND expire_time < DATE_ADD(NOW(), INTERVAL 2 HOUR)" +
+                " AND expire_time > UNIX_TIMESTAMP() AND expire_time < UNIX_TIMESTAMP(DATE_ADD(NOW(), INTERVAL 2 HOUR))" +
                 " AND owner_type = 0";
 
             // 排除假人自己的拍卖
@@ -743,16 +760,17 @@ function _handleAuctionGmCommand(user, msg) {
     if (cmd === 'restock' || (cmd === 'au' && sub === 'restock')) {
         if (cmd === 'au') { sub = parts[2]; arg = parts[3]; }
         if (sub === 'on') {
-            api_CUser_SendNotiPacketMessage(user, '补货引擎已暂停：当前写入auction_main的记录会导致拍卖服务注册失败', 8);
-            api_CUser_SendNotiPacketMessage(user, '请先修正上架记录格式或找到原生拍卖注册函数', 8);
-            return;
+            _engines.restocker.enabled = true;
+            auction.setBotConfig('restocking_enabled', '1', '补货引擎开关');
+            api_CUser_SendNotiPacketMessage(user, '补货引擎已开启（假人卖家模式）', 1);
         } else if (sub === 'off') {
             _engines.restocker.enabled = false;
             auction.setBotConfig('restocking_enabled', '0', '补货引擎开关');
             api_CUser_SendNotiPacketMessage(user, '补货引擎已关闭', 8);
         } else if (sub === 'now') {
-            api_CUser_SendNotiPacketMessage(user, '补货已暂停：当前写入auction_main的记录会导致拍卖服务注册失败', 8);
-            api_CUser_SendNotiPacketMessage(user, '请先修正上架记录格式或找到原生拍卖注册函数', 8);
+            api_CUser_SendNotiPacketMessage(user, '正在执行单次假人补货...', 3);
+            _engines.restocker.tick();
+            api_CUser_SendNotiPacketMessage(user, '单次假人补货完成；如需立即刷新拍卖行索引，请重启拍卖服务', 1);
         }
         return;
     }
