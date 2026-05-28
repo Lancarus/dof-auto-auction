@@ -109,7 +109,7 @@ Auction house automation via fake player characters. Controlled through `//au` p
 
 **Architecture**: Base module [lib/base-auction.js](lib/base-auction.js) exports DB helpers to `context['utils.auction']`. Feature module `auction-bot.js` has four engines (sniper, lister, bidder, restocker) driven by a unified timer.
 
-**Database**: Uses `taiwan_cain_auction_cera.auction_main` (game auction table) and `frida.*` tables (auction_whitelist, auction_system_config, auction_bot_characters, auction_bot_config, auction_bot_log, auction_price_history, pending_mail). All tables auto-created on init.
+**Database**: Uses `taiwan_cain_auction_gold.auction_main` for the normal auction house. `taiwan_cain_auction_cera` is the gold consignment / CERA auction service and is handled by `df_point_r`, not this normal auction bot. Frida-owned metadata stays in `frida.*` tables (auction_whitelist, auction_system_config, auction_bot_characters, auction_bot_config, auction_bot_log, auction_price_history, pending_mail). All Frida tables are auto-created on init.
 
 **Key GM commands**: `//au status`, `//au snip|list|bid|restock on|off|now`, `//au config <key> [value]`, `//au char add|remove|role <name>`, `//au stats <itemId>`, `//au reload`.
 
