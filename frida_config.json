@@ -127,6 +127,11 @@
             "name": "auction-bot",
             "path": "/plugins/frida/module/auction-bot.js",
             "enabled": true
+        },
+        {
+            "name": "town-dummy-probe",
+            "path": "/plugins/frida/module/town-dummy-probe.js",
+            "enabled": false
         }
     ]
 }
