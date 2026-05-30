@@ -22,7 +22,10 @@ var _config = {
     maxSnipesPerCycle: 20,
     maxListingsPerCycle: 10,
     maxBidsPerCycle: 5,
-    maxRestocksPerCycle: 15,
+    maxRestocksPerCycle: 500,
+    restockEquipmentPerCycle: 300,
+    restockMaterialPerCycle: 100,
+    restockConsumablePerCycle: 100,
     // 行为模拟
     enableBehaviorSim: true,
     priceRandomization: 0.15
@@ -108,6 +111,9 @@ function _reloadConfig() {
         _config.maxListingsPerCycle = _getConfigInt('max_listings_per_cycle', _config.maxListingsPerCycle);
         _config.maxBidsPerCycle = _getConfigInt('max_bids_per_cycle', _config.maxBidsPerCycle);
         _config.maxRestocksPerCycle = _getConfigInt('max_restocks_per_cycle', _config.maxRestocksPerCycle);
+        _config.restockEquipmentPerCycle = _getConfigInt('restock_equipment_per_cycle', _config.restockEquipmentPerCycle);
+        _config.restockMaterialPerCycle = _getConfigInt('restock_material_per_cycle', _config.restockMaterialPerCycle);
+        _config.restockConsumablePerCycle = _getConfigInt('restock_consumable_per_cycle', _config.restockConsumablePerCycle);
         _config.priceRandomization = _getConfigFloat('price_randomization', _config.priceRandomization);
         _config.enableBehaviorSim = _getConfigBool('enable_behavior_sim', _config.enableBehaviorSim);
 
@@ -171,8 +177,9 @@ function _activityMultiplier() {
     return _isPeakHour() ? 1.5 : 0.7;
 }
 
-function _getMarketItems(limit, includeNoise) {
-    var profiles = auction.getMarketProfiles(limit || 200, includeNoise || false);
+function _getMarketItems(limit, includeNoise, categoryFilter) {
+    var profileLimit = (limit === undefined || limit === null) ? 200 : limit;
+    var profiles = auction.getMarketProfiles(profileLimit, includeNoise || false, categoryFilter || null);
     if (profiles && profiles.length > 0) {
         for (var i = 0; i < profiles.length; i++) {
             profiles[i].system_price = profiles[i].base_price;
@@ -184,6 +191,7 @@ function _getMarketItems(limit, includeNoise) {
         }
         return profiles;
     }
+    if (categoryFilter) return [];
     return auction.getWhitelistItems();
 }
 
@@ -327,23 +335,17 @@ var _restocker = {
     interval: 300,
     lastRun: 0,
 
-    tick: function () {
-        if (_shouldSkipCycle()) return;
+    restockBucket: function (category, limit) {
+        limit = Math.max(0, Math.floor(limit || 0));
+        if (limit <= 0) return 0;
 
-        var whitelist = _getMarketItems(300, false);
-        if (whitelist.length === 0) return;
+        var profiles = _getMarketItems(0, false, category);
+        if (profiles.length === 0) return 0;
 
-        var botChars = auction.getActiveBotCharacters('seller');
-        if (botChars.length === 0) {
-            log(WARN, '[auction-bot] 补货引擎：没有可用的卖家假人，跳过补货');
-            return;
-        }
-
-        var maxRestocks = Math.floor(_config.maxRestocksPerCycle * _activityMultiplier());
         var totalRestocked = 0;
 
-        for (var w = 0; w < whitelist.length && totalRestocked < maxRestocks; w++) {
-            var wl = whitelist[w];
+        for (var w = 0; w < profiles.length && totalRestocked < limit; w++) {
+            var wl = profiles[w];
             var stackSize = wl.stack_size || 1;
             var targetRecords = wl.max_listings || Math.ceil(wl.quantity / stackSize);
             var targetQuantity = wl.min_total_quantity || wl.quantity || stackSize;
@@ -366,7 +368,7 @@ var _restocker = {
             var needByRecords = Math.max(0, targetRecords - current);
             var needByQty = currentQty < targetQuantity ? Math.ceil((targetQuantity - currentQty) / Math.max(1, stackSize)) : 0;
             var need = Math.max(needByRecords, needByQty);
-            need = Math.min(need, maxRestocks - totalRestocked);
+            need = Math.min(need, limit - totalRestocked);
 
             for (var i = 0; i < need; i++) {
                 var owner = _makeRestockOwner(wl.item_id, current + i + 1);
@@ -418,8 +420,33 @@ var _restocker = {
             }
         }
 
+        return totalRestocked;
+    },
+
+    tick: function () {
+        if (_shouldSkipCycle()) return;
+
+        var botChars = auction.getActiveBotCharacters('seller');
+        if (botChars.length === 0) {
+            log(WARN, '[auction-bot] 补货引擎：没有可用的卖家假人，跳过补货');
+            return;
+        }
+
+        var maxRestocks = Math.floor(_config.maxRestocksPerCycle);
+        var equipmentLimit = Math.min(maxRestocks, Math.floor(_config.restockEquipmentPerCycle || 0));
+        var materialLimit = Math.min(Math.max(0, maxRestocks - equipmentLimit), Math.floor(_config.restockMaterialPerCycle || 0));
+        var consumableLimit = Math.min(Math.max(0, maxRestocks - equipmentLimit - materialLimit), Math.floor(_config.restockConsumablePerCycle || 0));
+
+        var equipmentRestocked = this.restockBucket('equipment', equipmentLimit);
+        var materialRestocked = this.restockBucket('material', materialLimit);
+        var consumableRestocked = this.restockBucket('consumable', consumableLimit);
+        var totalRestocked = equipmentRestocked + materialRestocked + consumableRestocked;
+
         if (totalRestocked > 0) {
-            log(INFO, '[auction-bot] 补货引擎：本轮补货 ' + totalRestocked + ' 件');
+            log(INFO, '[auction-bot] 补货引擎：本轮补货 ' + totalRestocked + ' 件' +
+                '（装备 ' + equipmentRestocked + '/' + equipmentLimit +
+                '，材料 ' + materialRestocked + '/' + materialLimit +
+                '，消耗品 ' + consumableRestocked + '/' + consumableLimit + '）');
         }
     }
 };
@@ -712,6 +739,7 @@ function _handleAuctionGmCommand(user, msg) {
             '上架引擎: ' + (_engines.lister.enabled ? '开启' : '关闭') + ' (间隔' + _engines.lister.interval + 's, 上次' + _engines.lister.lastRun + ')',
             '竞价引擎: ' + (_engines.bidder.enabled ? '开启' : '关闭') + ' (间隔' + _engines.bidder.interval + 's, 上次' + _engines.bidder.lastRun + ')',
             '补货引擎: ' + (_engines.restocker.enabled ? '开启' : '关闭') + ' (间隔' + _engines.restocker.interval + 's, 上次' + _engines.restocker.lastRun + ')',
+            '补货分桶: 装备 ' + _config.restockEquipmentPerCycle + '，材料 ' + _config.restockMaterialPerCycle + '，消耗品 ' + _config.restockConsumablePerCycle + '，总上限 ' + _config.maxRestocksPerCycle,
             '行为模拟: ' + (_config.enableBehaviorSim ? '开启' : '关闭'),
             '收购比例: ' + _config.snipingPriceRatio,
             '利润比例: ' + _config.listingProfitMargin
@@ -792,8 +820,13 @@ function _handleAuctionGmCommand(user, msg) {
             api_CUser_SendNotiPacketMessage(user, '补货引擎已关闭', 8);
         } else if (sub === 'now') {
             api_CUser_SendNotiPacketMessage(user, '正在执行单次假人补货...', 3);
-            _engines.restocker.tick();
-            api_CUser_SendNotiPacketMessage(user, '单次假人补货完成；如需立即刷新拍卖行索引，请重启拍卖服务', 1);
+            try {
+                _engines.restocker.tick();
+                api_CUser_SendNotiPacketMessage(user, '单次假人补货完成；如需立即刷新拍卖行索引，请重启拍卖服务', 1);
+            } catch (e) {
+                log(ERROR, '[auction-bot] 单次假人补货失败: ' + e);
+                api_CUser_SendNotiPacketMessage(user, '单次假人补货失败，详情见Frida日志', 8);
+            }
         }
         return;
     }

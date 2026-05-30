@@ -20,3 +20,5 @@ __pycache__/
 # Generated PVF auction profile exports
 tradeable_items.json
 tradeable_item_profile_import.sql
+auction_item_profile_import.sql
+iteminfo_auction_item_profile_import.sql

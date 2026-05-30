@@ -1,6 +1,6 @@
 param(
     [string]$InputPath = ".\iteminfo.dat",
-    [string]$OutputPath = ".\auction_item_profile_import.sql"
+    [string]$OutputPath = ".\iteminfo_auction_item_profile_import.sql"
 )
 
 $ErrorActionPreference = "Stop"

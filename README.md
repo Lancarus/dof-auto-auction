@@ -569,6 +569,10 @@ hooks: [
 | `sniping_interval_s` | 30 | 狙击扫描间隔(秒) |
 | `sniping_price_ratio` | 0.70 | 收购价格比例 |
 | `listing_profit_margin` | 1.30 | 上架利润系数 |
+| `max_restocks_per_cycle` | 500 | 每轮补货总上限 |
+| `restock_equipment_per_cycle` | 300 | 每轮装备补货上限 |
+| `restock_material_per_cycle` | 100 | 每轮材料补货上限 |
+| `restock_consumable_per_cycle` | 100 | 每轮消耗品补货上限 |
 | `enable_behavior_sim` | 1 | 行为模拟开关(价格随机化/高峰时段) |
 | `price_randomization` | 0.15 | 价格随机化范围(±15%) |
 
@@ -662,7 +666,9 @@ python -m venv .venv
 
 导入 SQL 后，可通过 `//au restock on` 或 `//au restock now` 让补货引擎按画像生成在售拍卖。
 
-补货引擎每轮从 `auction_item_profile` 读取全部启用的 A/B 档画像，按画像顺序检查当前 bot 在售数量，并持续插入拍卖行记录，直到本轮达到 `max_restocks_per_cycle` 上限。默认上限为 500 条；如果数据库里已经存在旧配置，需要将 `auction_bot_config.max_restocks_per_cycle` 更新为 `500`，或通过 `//au config max_restocks_per_cycle 500` 调整。
+补货画像应导入 `tradeable_item_profile_import.sql`。`tools/import-iteminfo.ps1` 生成的是旧 iteminfo 候选 SQL，仅用于排查或临时补全，不应作为 PVF 补货画像导入。
+
+补货引擎每轮从 `auction_item_profile` 分桶读取全部启用的 A/B 档画像，按 `equipment`、`material`、`consumable` 三类分别检查当前 bot 在售数量，并持续插入拍卖行记录。默认每轮总上限为 500 条，分桶上限为装备 300、材料 100、消耗品 100；如果数据库里已经存在旧配置，需要通过 `//au config max_restocks_per_cycle 500`、`//au config restock_equipment_per_cycle 300`、`//au config restock_material_per_cycle 100`、`//au config restock_consumable_per_cycle 100` 调整。
 
 ### 过滤与定价规则
 
