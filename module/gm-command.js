@@ -358,7 +358,7 @@ module.exports = {
                 // 获取原始封包数据
                 var rawPacketBuf = api_PacketBuf_Get_Buf(args[2]);
                 // 解析GM DEBUG命令
-                var msgLen = rawPacketBuf.readInt();
+                var msgLen = rawPacketBuf.readS32();
                 var msg = rawPacketBuf.add(4).readUtf8String(msgLen);
                 msg = msg.slice(2);
                 msg = msg.trim();

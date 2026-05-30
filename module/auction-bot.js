@@ -1194,7 +1194,7 @@ module.exports = {
 
                 // 解析聊天消息
                 var rawPacketBuf = api_PacketBuf_Get_Buf(args[2]);
-                var msgLen = rawPacketBuf.readInt();
+                var msgLen = rawPacketBuf.readS32();
                 var msg = rawPacketBuf.add(4).readUtf8String(msgLen);
                 msg = msg.slice(2).trim();
 
