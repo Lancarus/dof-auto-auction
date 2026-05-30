@@ -158,6 +158,24 @@ function _randomizePrice(basePrice) {
     return Math.floor(basePrice * factor);
 }
 
+function _specialEquipmentPrice(unitPrice) {
+    var boosted = Math.max(1, Math.floor(unitPrice * 10));
+    var text = String(boosted);
+    if (text.length <= 2) return boosted;
+
+    var result = text.substring(0, 2);
+    for (var i = 2; i < text.length; i++) {
+        result += '1';
+    }
+    return parseInt(result, 10);
+}
+
+function _maybeSpecialEquipmentPrice(profile, unitPrice) {
+    if (!profile || profile.category !== 'equipment') return unitPrice;
+    if (Math.random() >= 0.03) return unitPrice;
+    return _specialEquipmentPrice(unitPrice);
+}
+
 /** 是否高峰时段 */
 function _isPeakHour() {
     var hour = new Date().getHours();
@@ -383,6 +401,7 @@ var _restocker = {
                 var basePrice = auction.calculateMarketPrice(wl.system_price, wl.item_id);
                 var unitPrice = Math.floor(basePrice * _config.listingProfitMargin);
                 unitPrice = _randomizePrice(unitPrice);
+                unitPrice = _maybeSpecialEquipmentPrice(wl, unitPrice);
 
                 var listing = {
                     owner_id: owner.owner_id,
@@ -499,6 +518,7 @@ var _lister = {
             var margin = marginMin + Math.random() * (marginMax - marginMin);
             var unitPrice = Math.floor(marketPrice * margin);
             unitPrice = _randomizePrice(unitPrice);
+            unitPrice = _maybeSpecialEquipmentPrice(wl, unitPrice);
 
             // 随机数量
             var qty = 1;
