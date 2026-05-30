@@ -26,10 +26,10 @@ const globalContext = (() => {
 	// 日志相关
 	let _fLog = null;
 	let _logDay = null;
-	let _logDir = '/plugins/frida/log/';// 日志目录 '/home/neople/game/log/'
+	let _logDir = '/dp2/frida/log/';// 日志目录 '/home/neople/game/log/'
 
 	//配置相关
-	let _configPath = '/plugins/frida/frida_config.json';// 全局配置文件默认路径
+	let _configPath = '/dp2/frida/frida_config.json';// 全局配置文件默认路径
 	/** 配置（通过加载配置文件初始化） */
 	let _config = {};
 
@@ -591,8 +591,10 @@ function awake() {
 		onEnter: function (args) {
 		},
 		onLeave: function (retval) {
-			// 等待check_argv函数执行结束 再加载插件			
-			globalContext._start();
+			// 等待check_argv函数执行结束，并给 dp2 后续 hook 安装留出时间。
+			setTimeout(function () {
+				globalContext._start();
+			}, 5000);
 		}
 	});
 }

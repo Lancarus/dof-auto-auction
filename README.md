@@ -157,7 +157,7 @@ function _require(path, context, name) {
 
 #### 1. 下载项目文件
 
-将项目文件上传到服务器，这里以 `/plugins/frida/` 路径为例。
+将项目文件上传到服务器，当前 dp2 共载分支默认使用 `/dp2/frida/`。
 
 #### 2. 修改服务器启动脚本
 
@@ -170,7 +170,7 @@ function _require(path, context, name) {
 
 **修改后：**
 ```bash
-LD_PRELOAD="/plugins/frida/frida.so" ./df_game_r siroco15 start &
+LD_PRELOAD="/dp2/frida/frida.so" ./df_game_r siroco15 start &
 ```
 
 #### 3. 配置Frida-Gadget
@@ -189,16 +189,26 @@ LD_PRELOAD="/plugins/frida/frida.so" ./df_game_r siroco15 start &
 
 ### 🔧 高级配置
 
+#### 与 dp2 共载
+
+如果服务器同时使用 dp2，将本项目文件同步到 `/dp2/frida/`，并在频道启动行同时预加载 dp2 加载器和 Frida Gadget：
+
+```bash
+LD_PRELOAD="/dp2/libdp2pre.so /dp2/frida/frida.so" ./df_game_r siroco11 start &
+```
+
+dp2 仍由 `/dp2/libdp2pre.so` 加载，本项目由 `/dp2/frida/frida.so` 读取 `/dp2/frida/frida.config` 后加载 `frida.js`。本项目首次启动会在 `check_argv` 后延迟数秒再初始化，避免 dp2 后续安装输入相关 hook 时覆盖本项目的 GM 指令 hook。
+
 #### 多频道支持
 
 如果需要支持多个频道，可以这样配置：
 
 ```bash
 # 频道1
-LD_PRELOAD="/plugins/frida/frida.so" ./df_game_r siroco15 start &
+LD_PRELOAD="/dp2/frida/frida.so" ./df_game_r siroco15 start &
 
-# 频道2  
-LD_PRELOAD="/plugins/frida/frida.so" ./df_game_r siroco16 start & 
+# 频道2
+LD_PRELOAD="/dp2/frida/frida.so" ./df_game_r siroco16 start &
 ```
 
 ### ⚠️ 安装注意事项
@@ -224,13 +234,13 @@ LD_PRELOAD="/plugins/frida/frida.so" ./df_game_r siroco16 start &
         "modules": [
             {
                 "name": "核心模块名",
-                "path": "/plugins/frida/lib/core/核心模块文件.js",
+                "path": "/dp2/frida/lib/core/核心模块文件.js",
                 "enabled": true,
                 "freeze": true
             },
             {
                 "name": "基础模块名",
-                "path": "/plugins/frida/lib/基础模块文件.js",
+                "path": "/dp2/frida/lib/基础模块文件.js",
                 "enabled": true
             }
         ]
@@ -238,7 +248,7 @@ LD_PRELOAD="/plugins/frida/frida.so" ./df_game_r siroco16 start &
     "modules": [
         {
             "name": "功能模块名",
-            "path": "/plugins/frida/module/模块文件.js",
+            "path": "/dp2/frida/module/模块文件.js",
             "enabled": true
         }
     ]
@@ -261,8 +271,8 @@ LD_PRELOAD="/plugins/frida/frida.so" ./df_game_r siroco16 start &
 
 | 变量 | 路径 | 说明 |
 |------|------|------|
-| `_configPath` | `/plugins/frida/frida_config.json` | 全局配置文件路径 |
-| `_logDir` | `/plugins/frida/log/` | 日志保存目录 |
+| `_configPath` | `/dp2/frida/frida_config.json` | 全局配置文件路径 |
+| `_logDir` | `/dp2/frida/log/` | 日志保存目录 |
 
 > **📍 修改位置：** 这两个变量在 `frida.js` 的变量声明部分定义，如需修改路径请在此处调整。
 

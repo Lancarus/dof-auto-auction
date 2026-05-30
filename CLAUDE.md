@@ -91,7 +91,8 @@ module.exports = {
 
 - `frida_config.json` — Module list and `common` settings (GM character IDs, etc.)
 - `frida.config` — Frida-Gadget config; must point `interaction.path` to `frida.js` and set `on_change: "reload"`
-- Key paths in `frida.js`: `_configPath = '/plugins/frida/frida_config.json'`, `_logDir = '/plugins/frida/log/'`
+- Key paths in `frida.js`: `_configPath = '/dp2/frida/frida_config.json'`, `_logDir = '/dp2/frida/log/'`
+- dp2 co-load deployment uses `/dp2/frida/` for this project and starts the game with `LD_PRELOAD="/dp2/libdp2pre.so /dp2/frida/frida.so" ./df_game_r siroco11 start &`. The first Frida startup is delayed after `check_argv` so dp2 can finish installing its input hooks before this project registers GM command hooks.
 - `.env` — VM server SSH/DB credentials and service management commands (actual values are in `.env`, never commit or expose them). See `.env.example` for the template.
 
 ## VM Server Operations (via .env)
@@ -131,7 +132,7 @@ ssh "${env:SSH_USER}@${env:SSH_HOST}" -p $env:SSH_PORT
 Or use Plink (`plink.exe`) for non-interactive commands:
 
 ```powershell
-plink -pw $env:SSH_PASS -P $env:SSH_PORT "${env:SSH_USER}@${env:SSH_HOST}" "ls /plugins/frida/"
+plink -pw $env:SSH_PASS -P $env:SSH_PORT "${env:SSH_USER}@${env:SSH_HOST}" "ls /dp2/frida/"
 ```
 
 ### Database Access

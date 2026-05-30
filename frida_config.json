@@ -17,48 +17,48 @@
         "modules": [
             {
                 "name": "system",
-                "path": "/plugins/frida/lib/core/core-system-manager.js",
+                "path": "/dp2/frida/lib/core/core-system-manager.js",
                 "enabled": true,
                 "freeze": true
             },
             {
                 "name": "mysql",
-                "path": "/plugins/frida/lib/core/core-mysql-database.js",
+                "path": "/dp2/frida/lib/core/core-mysql-database.js",
                 "enabled": true
             },
             {
                 "name": "utils",
-                "path": "/plugins/frida/lib/game-utils.js",
+                "path": "/dp2/frida/lib/game-utils.js",
                 "enabled": true
             },
             {
                 "name": "utils.cuser",
-                "path": "/plugins/frida/lib/base-cuser.js",
+                "path": "/dp2/frida/lib/base-cuser.js",
                 "enabled": true
             },
             {
                 "name": "utils.cuserCharacInfo",
-                "path": "/plugins/frida/lib/base-cuser-charac-info.js",
+                "path": "/dp2/frida/lib/base-cuser-charac-info.js",
                 "enabled": true
             },
             {
                 "name": "utils.gameWorld",
-                "path": "/plugins/frida/lib/base-game-world.js",
+                "path": "/dp2/frida/lib/base-game-world.js",
                 "enabled": true
             },
             {
                 "name": "utils.cuserEx",
-                "path": "/plugins/frida/lib/extend-cuser.js",
+                "path": "/dp2/frida/lib/extend-cuser.js",
                 "enabled": true
             },
             {
                 "name": "utils.gameWorldEx",
-                "path": "/plugins/frida/lib/extend-game-world.js",
+                "path": "/dp2/frida/lib/extend-game-world.js",
                 "enabled": true
             },
             {
                 "name": "utils.auction",
-                "path": "/plugins/frida/lib/base-auction.js",
+                "path": "/dp2/frida/lib/base-auction.js",
                 "enabled": true
             }
         ]
@@ -66,66 +66,66 @@
     "modules": [
         {
             "name": "GM指令",
-            "path": "/plugins/frida/module/gm-command.js",
+            "path": "/dp2/frida/module/gm-command.js",
             "enabled": true
         },
         {
             "name": "join-guild",
-            "path": "/plugins/frida/module/auto-join-guild.js",
+            "path": "/dp2/frida/module/auto-join-guild.js",
             "enabled": true,
             "freeze": true
         },
         {
             "name": "rank",
-            "path": "/plugins/frida/module/rank-notice.js",
+            "path": "/dp2/frida/module/rank-notice.js",
             "enabled": true
         },
         {
             "name": "abyss-mode",
-            "path": "/plugins/frida/module/abyss-mode.js",
+            "path": "/dp2/frida/module/abyss-mode.js",
             "enabled": true
         },
         {
             "name": "linas",
-            "path": "/plugins/frida/module/linas-gift.js",
+            "path": "/dp2/frida/module/linas-gift.js",
             "enabled": true,
             "freeze": true
         },
         {
             "name": "useitem",
-            "path": "/plugins/frida/module/item-handle.js",
+            "path": "/dp2/frida/module/item-handle.js",
             "enabled": true
         },
         {
             "name": "继承",
-            "path": "/plugins/frida/module/equ-inherit.js",
+            "path": "/dp2/frida/module/equ-inherit.js",
             "enabled": true
         },
         {
             "name": "跨界",
-            "path": "/plugins/frida/module/equ-transfer.js",
+            "path": "/dp2/frida/module/equ-transfer.js",
             "enabled": true
         },
         {
             "name": "inlay",
-            "path": "/plugins/frida/module/equ-inlay.js",
+            "path": "/dp2/frida/module/equ-inlay.js",
             "enabled": true,
             "freeze": true
         },
         {
             "name": "fourteen",
-            "path": "/plugins/frida/module/fourteen-keys.js",
+            "path": "/dp2/frida/module/fourteen-keys.js",
             "enabled": true,
             "freeze": true
         },
         {
             "name": "tarde",
-            "path": "/plugins/frida/module/trade-gold-daily.js",
+            "path": "/dp2/frida/module/trade-gold-daily.js",
             "enabled": false
         },
         {
             "name": "auction-bot",
-            "path": "/plugins/frida/module/auction-bot.js",
+            "path": "/dp2/frida/module/auction-bot.js",
             "enabled": true
         }
     ]
