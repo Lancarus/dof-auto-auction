@@ -113,6 +113,21 @@ Auction house automation via fake player characters. Controlled through `//au` p
 
 **Key GM commands**: `//au status`, `//au snip|list|bid|restock on|off|now`, `//au config <key> [value]`, `//au char add|remove|role <name>`, `//au stats <itemId>`, `//au reload`.
 
+**PVF tradeable profile export**: [export_tradeable.py](export_tradeable.py) reads PVF exports from `G:\dnfsifu\develop\pvfTiqu` by default and generates `tradeable_item_profile_import.sql` plus `tradeable_items.json`. Run it through the repo virtual environment, e.g. `.\.venv\Scripts\python.exe export_tradeable.py --pvf-root G:\dnfsifu\develop\pvfTiqu`. It uses only the Python standard library.
+
+The export SQL seeds `frida.auction_item_profile`; it must not directly create `taiwan_cain_auction_gold.auction_main` rows. Initial imports intentionally `DELETE FROM auction_item_profile` and rebuild the generated profile set. Generated JSON/SQL and `.venv/` are ignored by git.
+
+PVF export rules currently agreed for this repo:
+- `item_id` must come from `equipment.lst` / `stackable.lst`; unmapped files are skipped.
+- Only `attach type` values `[free]` and `[sealing]` are auction-profile candidates.
+- Empty names and names containing `旧` or `舊` are skipped.
+- Equipment `rarity >= 4` is skipped. Equipment `rarity == 2` and level >= 40 is B tier with stock target 5-10. Equipment `rarity == 3` and level >= 40 is A tier with stock target 2-4. Lower-value equipment is C tier.
+- Equipment base price is `value / 5` multiplied by the equipment group, level, rarity, inherited-name, and set-bonus factors documented in `export_tradeable.py`; do not use PVF `price` as the equipment base price.
+- Stackable materials are `material`, `material expert job`, `enchant waste`, `waste`, and `unlimited waste`; they use deterministic 100-25000 generated prices.
+- Other stackable types are consumables. If a consumable has `price`, generated price is bounded by it. Priceless consumables are imported only when their stackable type is allowlisted in the script.
+- Stackable tier thresholds are lowered by one from the earlier draft: rarity >= 3 is A tier, rarity == 2 is at least B tier, and rarity <= 1 falls back to stackable-type tiering.
+- `preferred_stack_max` is capped at `min(stack limit, 100)` because restock rows with larger `add_info` have not been validated.
+
 **Auction service restart**: On the VM, `/root/run2` restarts only the normal auction service (`df_auction_r`) for `auction_siroco.cfg` and validates that port `30803` is listening. It does not restart `df_point_r`; point/CERA service listens on `30603` and uses `point_siroco.cfg`.
 
 **`auction_main` write constraints**:

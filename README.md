@@ -634,6 +634,50 @@ const { cinven } = context.utils;
 > - 配置文件中的 `name` 字段很重要，GM重载某个模块就是根据这个 `name` 来识别的
 > - 运行时新增模块需要同时更新配置文件，然后使用带 `cfg` 的命令
 
+## 🏪 拍卖行补货画像导出
+
+`export_tradeable.py` 用于从 PVF 导出的 `equipment/` 和 `stackable/` 目录生成拍卖行补货画像 SQL。它不会直接写入 `taiwan_cain_auction_gold.auction_main`，而是生成可导入 `frida.auction_item_profile` 的 SQL，让 `auction-bot` 的补货引擎按画像自动上架。
+
+### 运行方式
+
+脚本只依赖 Python 标准库。建议使用仓库本地虚拟环境：
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe export_tradeable.py --pvf-root G:\dnfsifu\develop\pvfTiqu
+```
+
+默认 PVF 路径就是 `G:\dnfsifu\develop\pvfTiqu`，所以在当前开发机上也可以直接运行：
+
+```powershell
+.\.venv\Scripts\python.exe export_tradeable.py
+```
+
+生成文件：
+
+| 文件 | 说明 |
+|------|------|
+| `tradeable_item_profile_import.sql` | 导入 `frida.auction_item_profile` 的 SQL；初版会先清空画像表再全量重建 |
+| `tradeable_items.json` | 本次扫描结果、跳过原因和分类统计，用于检查规则是否符合预期 |
+
+导入 SQL 后，可通过 `//au restock on` 或 `//au restock now` 让补货引擎按画像生成在售拍卖。
+
+### 过滤与定价规则
+
+| 类别 | 规则 |
+|------|------|
+| `item_id` 来源 | 只使用 `equipment.lst` / `stackable.lst` 能映射出的物品 |
+| 交易状态 | 只导入 `attach type` 为 `[free]` 或 `[sealing]` 的物品 |
+| 名称过滤 | 名称为空、含 `旧` 或 `舊` 的物品不进入画像 |
+| 装备稀有度 | 装备 `rarity >= 4` 过滤；`rarity == 2` 且等级 >= 40 进入 B 档，库存 5-10；`rarity == 3` 且等级 >= 40 进入 A 档，库存 2-4 |
+| 装备价格 | 基础价只取 `value / 5`，再乘装备种类、等级、稀有度、传承、套装因子 |
+| 材料类道具 | `material`、`material expert job`、`enchant waste`、`waste`、`unlimited waste` 生成 100-25000 的稳定波动价格 |
+| 消耗类道具 | 有 `price` 时以 `price` 为上限生成稳定价格；无 `price` 时仅白名单类型进入 |
+| 道具档位 | 道具 `rarity >= 3` 进入 A 档；`rarity == 2` 至少进入 B 档；`rarity <= 1` 按 `stackable type` 判断 |
+| 堆叠数量 | 单条补货数量按 `min(stack limit, 100)` 写入 `preferred_stack_max` |
+
+默认补货查询只取 A/B 档候选；C 档保留画像但通常不进入默认补货池。
+
 ## 📊 日志展示
 
 ### 🔍 系统启动日志
