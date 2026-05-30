@@ -1,0 +1,61 @@
+#!/bin/bash
+#拍卖行服务重启
+set -u
+
+AUCTION_DIR=/home/neople/auction
+AUCTION_BIN=./df_auction_r
+AUCTION_CFG=./cfg/auction_siroco.cfg
+AUCTION_PORT=30803
+START_LOG=./log/run2_start.log
+
+echo "========================================"
+echo "Restarting auction service (df_auction_r)"
+echo "========================================"
+
+echo "-> stopping old df_auction_r processes..."
+killall -9 df_auction_r 2>/dev/null || true
+sleep 1
+
+echo "-> entering $AUCTION_DIR..."
+cd "$AUCTION_DIR" || {
+    echo "ERROR: $AUCTION_DIR does not exist"
+    exit 1
+}
+
+echo "-> preparing files..."
+chmod 755 * 2>/dev/null || true
+rm -f ./pid/*.pid 2>/dev/null || true
+mkdir -p ./log
+rm -f "$START_LOG"
+
+echo "-> starting df_auction_r..."
+env -u LD_PRELOAD nohup "$AUCTION_BIN" "$AUCTION_CFG" start "$AUCTION_BIN" > "$START_LOG" 2>&1 < /dev/null &
+START_PID=$!
+echo "-> launcher pid: $START_PID"
+
+for i in $(seq 1 15); do
+    if netstat -lntup 2>/dev/null | grep -q ":$AUCTION_PORT .*df_auction"; then
+        echo "auction service started and port $AUCTION_PORT is listening"
+        echo "========================================"
+        echo "Done"
+        echo "========================================"
+        exit 0
+    fi
+
+    if ! ps -ef | grep '[d]f_auction_r' >/dev/null; then
+        echo "ERROR: df_auction_r exited before port $AUCTION_PORT opened"
+        echo "--- $START_LOG ---"
+        tail -80 "$START_LOG" 2>/dev/null || true
+        exit 1
+    fi
+
+    sleep 1
+done
+
+echo "ERROR: df_auction_r is running but port $AUCTION_PORT did not open in time"
+echo "--- processes ---"
+ps -ef | grep '[d]f_auction_r' || true
+echo "--- $START_LOG ---"
+tail -80 "$START_LOG" 2>/dev/null || true
+exit 1
+
