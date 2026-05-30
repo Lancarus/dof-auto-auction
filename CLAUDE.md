@@ -92,6 +92,63 @@ module.exports = {
 - `frida_config.json` — Module list and `common` settings (GM character IDs, etc.)
 - `frida.config` — Frida-Gadget config; must point `interaction.path` to `frida.js` and set `on_change: "reload"`
 - Key paths in `frida.js`: `_configPath = '/plugins/frida/frida_config.json'`, `_logDir = '/plugins/frida/log/'`
+- `.env` — VM server SSH/DB credentials and service management commands (actual values are in `.env`, never commit or expose them). See `.env.example` for the template.
+
+## VM Server Operations (via .env)
+
+`.env` defines the remote server connection and database access for automated operations. **Never hardcode credentials in scripts or documentation** — always read from `.env`.
+
+### Environment Variables
+
+| Variable | Purpose |
+|----------|---------|
+| `SSH_HOST` | VM server IP address |
+| `SSH_PORT` | SSH port |
+| `SSH_USER` | SSH login username |
+| `SSH_PASS` | SSH login password |
+| `DB_HOST` | MySQL server host (typically same as `SSH_HOST`) |
+| `DB_PORT` | MySQL port |
+| `DB_USER` | MySQL username for game/frida databases |
+| `DB_PASS` | MySQL password |
+| `STOP_COMMAND` | Remote command to stop all game services |
+| `START_COMMAND` | Remote command to start all game services |
+| `AUCTION_CFG_RESTART` | Remote command to restart normal auction service only (`df_auction_r`, port `30803`). Does not affect `df_point_r` (port `30603`). |
+
+### Connecting via SSH
+
+Use the SSH variables to connect. Example (PowerShell):
+
+```powershell
+# Load .env
+$envContent = Get-Content .\.env -Raw
+$envContent -split "`n" | Where-Object { $_ -match '^([^#=]+)=(.*)$' } | ForEach-Object {
+    Set-Item -Path "env:$($matches[1].Trim())" -Value $matches[2].Trim().Trim('"')
+}
+# Connect
+ssh "${env:SSH_USER}@${env:SSH_HOST}" -p $env:SSH_PORT
+```
+
+Or use Plink (`plink.exe`) for non-interactive commands:
+
+```powershell
+plink -pw $env:SSH_PASS -P $env:SSH_PORT "${env:SSH_USER}@${env:SSH_HOST}" "ls /plugins/frida/"
+```
+
+### Database Access
+
+```powershell
+mysql -h $env:DB_HOST -P $env:DB_PORT -u $env:DB_USER -p$env:DB_PASS
+```
+
+Use `frida` database for bot metadata tables; `taiwan_cain_auction_gold` for auction house data; game character databases per their naming convention.
+
+### Service Management Commands
+
+| Remote command | Effect |
+|----------------|--------|
+| `STOP_COMMAND` (`/root/stop`) | Stop all game services |
+| `START_COMMAND` (`/root/run`) | Start all game services |
+| `AUCTION_CFG_RESTART` (`/root/run2`) | Restart normal auction (`df_auction_r` only); validates port `30803` is listening. Does not restart `df_point_r` (point/CERA, port `30603`). |
 
 ## GM Reload Commands
 
