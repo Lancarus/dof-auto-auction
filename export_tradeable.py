@@ -273,6 +273,12 @@ HIGH_VALUE_STACKABLE_TYPES = {
     "upgrade limit cube",
 }
 
+BLOCKED_CONSUMABLE_STACKABLE_TYPES = {
+    "upgradable legacy",
+    "multi upgradable legacy",
+    "multi upgradable legacy bonus cera",
+}
+
 MID_VALUE_STACKABLE_TYPES = {
     "material",
     "material expert job",
@@ -455,10 +461,10 @@ def equipment_policy(rarity, level):
     if rarity == 3 and level >= 40:
         return {
             "market_tier": "A",
-            "min_listings": 2,
-            "max_listings": 4,
-            "min_total_quantity": 2,
-            "max_total_quantity": 4,
+            "min_listings": 1,
+            "max_listings": 2,
+            "min_total_quantity": 1,
+            "max_total_quantity": 2,
             "volatility": "0.35",
             "bot_trade_weight": "0.20",
             "rotation_weight": "0.30",
@@ -466,10 +472,10 @@ def equipment_policy(rarity, level):
     if rarity == 2 and level >= 40:
         return {
             "market_tier": "B",
-            "min_listings": 5,
-            "max_listings": 10,
-            "min_total_quantity": 5,
-            "max_total_quantity": 10,
+            "min_listings": 3,
+            "max_listings": 5,
+            "min_total_quantity": 3,
+            "max_total_quantity": 5,
             "volatility": "0.30",
             "bot_trade_weight": "0.16",
             "rotation_weight": "0.18",
@@ -661,6 +667,10 @@ def parse_stackable_file(path, item_id, pvf_root):
 
     rarity = parse_scalar(first_value(content, "rarity", 0), 0)
     stack_type = clean_key_value(first_value(content, "stackable type", "unknown")) or "unknown"
+    category = stackable_category(stack_type)
+    if category == "consumable" and stack_type in BLOCKED_CONSUMABLE_STACKABLE_TYPES:
+        return None, "consumable_blocked_stackable_type"
+
     price = parse_scalar(first_value(content, "price", 0), 0)
     stack_limit = parse_scalar(first_value(content, "stack limit", 1), 1)
     min_level = parse_scalar(first_value(content, "minimum level", 1), 1)
@@ -682,7 +692,7 @@ def parse_stackable_file(path, item_id, pvf_root):
         "rarity_name": RARITY_NAMES.get(rarity, "未知"),
         "min_level": min_level,
         "stackable_type": stack_type,
-        "stackable_category": stackable_category(stack_type),
+        "stackable_category": category,
         "stack_limit": stack_limit,
         "original_price": price,
         "base_price": base_price,

@@ -677,10 +677,10 @@ python -m venv .venv
 | `item_id` 来源 | 只使用 `equipment.lst` / `stackable.lst` 能映射出的物品 |
 | 交易状态 | 只导入 `attach type` 为 `[free]` 或 `[sealing]` 的物品 |
 | 名称过滤 | 名称为空、含 `旧` 或 `舊` 的物品不进入画像 |
-| 装备稀有度 | 装备 `rarity >= 4` 过滤；`rarity == 2` 且等级 >= 40 进入 B 档，库存 5-10；`rarity == 3` 且等级 >= 40 进入 A 档，库存 2-4 |
+| 装备稀有度 | 装备 `rarity >= 4` 过滤；`rarity == 2` 且等级 >= 40 进入 B 档，库存 3-5；`rarity == 3` 且等级 >= 40 进入 A 档，库存 1-2 |
 | 装备价格 | 基础价只取 `value / 5`，再乘装备种类、等级、稀有度、传承、套装因子 |
 | 材料类道具 | `material`、`material expert job`、`enchant waste`、`waste`、`unlimited waste` 生成 100-25000 的稳定波动价格 |
-| 消耗类道具 | 有 `price` 时以 `price` 为上限生成稳定价格；无 `price` 时仅白名单类型进入 |
+| 消耗类道具 | 有 `price` 时以 `price` 为上限生成稳定价格；无 `price` 时仅白名单类型进入；`stackable type` 为 `upgradable legacy`、`multi upgradable legacy`、`multi upgradable legacy bonus cera` 的袖珍罐类消耗品过滤 |
 | 道具档位 | 道具 `rarity >= 3` 进入 A 档；`rarity == 2` 至少进入 B 档；`rarity <= 1` 按 `stackable type` 判断 |
 | 堆叠数量 | 单条补货数量按 `min(stack limit, 100)` 写入 `preferred_stack_max` |
 
