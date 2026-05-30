@@ -1,6 +1,8 @@
 """
 导出 PVF 中可进入拍卖补货画像的装备和道具，并生成可导入 SQL。
 
+先用pvfUT把装备和道具提取出来
+
 初版策略：
 - 只使用 equipment.lst / stackable.lst 映射出的 item_id。
 - SQL 导入 frida.auction_item_profile，不直接写 auction_main。
@@ -256,24 +258,18 @@ MATERIAL_STACKABLE_TYPES = {
 PRICELESS_CONSUMABLE_ALLOWLIST = {
     "expert town potion",
     "town and dungeon",
-    "recipe",
     "avatar emblem",
-    "upgradable legacy",
-    "multi upgradable legacy",
-    "multi upgradable legacy bonus cera",
     "upgrade limit cube",
     "etc",
 }
 
 HIGH_VALUE_STACKABLE_TYPES = {
     "avatar emblem",
-    "upgradable legacy",
-    "multi upgradable legacy",
-    "multi upgradable legacy bonus cera",
     "upgrade limit cube",
 }
 
 BLOCKED_CONSUMABLE_STACKABLE_TYPES = {
+    "recipe",
     "upgradable legacy",
     "multi upgradable legacy",
     "multi upgradable legacy bonus cera",
@@ -283,7 +279,6 @@ MID_VALUE_STACKABLE_TYPES = {
     "material",
     "material expert job",
     "enchant waste",
-    "recipe",
     "booster",
     "booster selection",
     "town and dungeon",
@@ -526,20 +521,20 @@ def stackable_price(item_id, stack_type, rarity, price):
 
 def stackable_policy(stack_type, rarity, stack_limit):
     tier = stackable_tier(stack_type, rarity)
-    preferred_stack_max = max(1, min(stack_limit or 1, 100))
+    stack_limit = max(1, stack_limit or 1)
+    preferred_stack_max = min(stack_limit, 500)
+    preferred_stack_min = min(preferred_stack_max, 300)
+    max_listings = 10
 
     if tier == "A":
-        max_listings = 5
         volatility = "0.30"
         bot_weight = "0.22"
         rotation = "0.35"
     elif tier == "B":
-        max_listings = 5
         volatility = "0.22"
         bot_weight = "0.18"
         rotation = "0.20"
     else:
-        max_listings = 2
         volatility = "0.20"
         bot_weight = "0.08"
         rotation = "0.03"
@@ -548,9 +543,9 @@ def stackable_policy(stack_type, rarity, stack_limit):
         "market_tier": tier,
         "min_listings": 0,
         "max_listings": max_listings,
-        "min_total_quantity": 0,
+        "min_total_quantity": preferred_stack_min * max_listings,
         "max_total_quantity": preferred_stack_max * max_listings,
-        "preferred_stack_min": 1,
+        "preferred_stack_min": preferred_stack_min,
         "preferred_stack_max": preferred_stack_max,
         "volatility": volatility,
         "bot_trade_weight": bot_weight,
@@ -673,6 +668,9 @@ def parse_stackable_file(path, item_id, pvf_root):
 
     price = parse_scalar(first_value(content, "price", 0), 0)
     stack_limit = parse_scalar(first_value(content, "stack limit", 1), 1)
+    if stack_limit <= 1:
+        return None, "stackable_not_stackable"
+
     min_level = parse_scalar(first_value(content, "minimum level", 1), 1)
 
     base_price = stackable_price(item_id, stack_type, rarity, price)

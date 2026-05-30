@@ -216,9 +216,7 @@ function _getMarketItems(limit, includeNoise, categoryFilter) {
 function _pickListingQuantity(profile) {
     var min = profile.preferred_stack_min || 1;
     var max = profile.preferred_stack_max || profile.stack_size || 1;
-    max = Math.min(max, 100);
     min = Math.min(min, max);
-    if (max >= 100) return 100;
     if (max < min) max = min;
     return min + Math.floor(Math.random() * (max - min + 1));
 }
@@ -392,11 +390,6 @@ var _restocker = {
                 var owner = _makeRestockOwner(wl.item_id, current + i + 1);
                 var pos = current + i;
                 var addInfo = _pickListingQuantity(wl);
-                if (pos >= targetRecords - 1) {
-                    // 最后一条可能不满堆
-                    addInfo = Math.max(1, Math.min(100, wl.quantity - (targetRecords - 1) * stackSize));
-                    if ((wl.preferred_stack_max || wl.stack_size || 1) >= 100) addInfo = 100;
-                }
 
                 var basePrice = auction.calculateMarketPrice(wl.system_price, wl.item_id);
                 var unitPrice = Math.floor(basePrice * _config.listingProfitMargin);
@@ -520,11 +513,7 @@ var _lister = {
             unitPrice = _randomizePrice(unitPrice);
             unitPrice = _maybeSpecialEquipmentPrice(wl, unitPrice);
 
-            // 随机数量
-            var qty = 1;
-            if (wl.stack_size > 1) {
-                qty = 1 + Math.floor(Math.random() * Math.min(3, wl.stack_size));
-            }
+            var qty = _pickListingQuantity(wl);
 
             var listing = {
                 owner_id: ch.charac_no,
