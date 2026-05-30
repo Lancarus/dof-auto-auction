@@ -662,6 +662,8 @@ python -m venv .venv
 
 导入 SQL 后，可通过 `//au restock on` 或 `//au restock now` 让补货引擎按画像生成在售拍卖。
 
+补货引擎每轮从 `auction_item_profile` 读取全部启用的 A/B 档画像，按画像顺序检查当前 bot 在售数量，并持续插入拍卖行记录，直到本轮达到 `max_restocks_per_cycle` 上限。默认上限为 500 条；如果数据库里已经存在旧配置，需要将 `auction_bot_config.max_restocks_per_cycle` 更新为 `500`，或通过 `//au config max_restocks_per_cycle 500` 调整。
+
 ### 过滤与定价规则
 
 | 类别 | 规则 |

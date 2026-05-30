@@ -117,6 +117,8 @@ Auction house automation via fake player characters. Controlled through `//au` p
 
 The export SQL seeds `frida.auction_item_profile`; it must not directly create `taiwan_cain_auction_gold.auction_main` rows. Initial imports intentionally `DELETE FROM auction_item_profile` and rebuild the generated profile set. Generated JSON/SQL and `.venv/` are ignored by git.
 
+The restocker reads `auction_item_profile` directly for enabled A/B tier profiles and no longer limits the profile scan to 300 rows. Each restock tick inserts auction rows until `max_restocks_per_cycle` is reached or all profiles are satisfied. The default is 500 rows per tick, and this cap is not multiplied by peak/off-peak behavior simulation. Existing databases may still contain the old `auction_bot_config.max_restocks_per_cycle` value because defaults are inserted with `INSERT IGNORE`; update that config explicitly when deploying this behavior.
+
 PVF export rules currently agreed for this repo:
 - `item_id` must come from `equipment.lst` / `stackable.lst`; unmapped files are skipped.
 - Only `attach type` values `[free]` and `[sealing]` are auction-profile candidates.
