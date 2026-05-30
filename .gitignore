@@ -12,3 +12,11 @@ module/abyss-reward.js
 .claude/
 
 .env
+
+# Python local environment/cache
+.venv/
+__pycache__/
+
+# Generated PVF auction profile exports
+tradeable_items.json
+tradeable_item_profile_import.sql
