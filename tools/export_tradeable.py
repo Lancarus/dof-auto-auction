@@ -270,9 +270,26 @@ HIGH_VALUE_STACKABLE_TYPES = {
 
 BLOCKED_CONSUMABLE_STACKABLE_TYPES = {
     "recipe",
+    "avatar emblem",
     "upgradable legacy",
     "multi upgradable legacy",
     "multi upgradable legacy bonus cera",
+}
+
+BLOCKED_STACKABLE_PATH_PREFIXES = (
+    "cash/",
+    "emblem/",
+    "event/",
+    "fp/",
+    "professional/recipe/",
+    "recipe/",
+    "temp/",
+    "twdf/",
+)
+
+COMMON_STACKABLE_PRIORITY_IDS = {
+    3033, 3034, 3035, 3036, 3037, 3038, 3039, 3040, 3041, 3042,
+    6001, 6002, 6003, 6004, 6005, 6006, 6007, 6008, 6009, 6010, 6011, 6012, 6013,
 }
 
 MID_VALUE_STACKABLE_TYPES = {
@@ -512,8 +529,6 @@ def stackable_price(item_id, stack_type, rarity, price):
 
     if stack_type in HIGH_VALUE_STACKABLE_TYPES:
         return stable_range(f"priceless-high:{item_id}", 5_000, 100_000)
-    if stack_type == "recipe":
-        return stable_range(f"recipe:{item_id}", 1_000, 25_000)
     if stack_type in ("expert town potion", "town and dungeon"):
         return stable_range(f"profession:{item_id}", 500, 15_000)
     return stable_range(f"priceless:{item_id}", 500, 25_000)
@@ -551,6 +566,17 @@ def stackable_policy(stack_type, rarity, stack_limit):
         "bot_trade_weight": bot_weight,
         "rotation_weight": rotation,
     }
+
+
+def promote_common_stackable(item_id, policy):
+    if item_id not in COMMON_STACKABLE_PRIORITY_IDS:
+        return policy
+
+    promoted = dict(policy)
+    promoted["market_tier"] = "A"
+    promoted["bot_trade_weight"] = "0.30"
+    promoted["rotation_weight"] = "0.75"
+    return promoted
 
 
 def make_profile(item, category, raw_category_code, policy):
@@ -652,6 +678,14 @@ def parse_equipment_file(path, item_id, pvf_root):
 
 def parse_stackable_file(path, item_id, pvf_root):
     content = read_text(path)
+    rel_file = str(Path(path).resolve().relative_to(pvf_root.resolve())).replace("\\", "/")
+    rel_stackable_file = rel_file[len(f"{STACKABLE_DIR}/"):] if rel_file.startswith(f"{STACKABLE_DIR}/") else rel_file
+    rel_stackable_file = normalize_rel_path(rel_stackable_file)
+    if rel_stackable_file.startswith(BLOCKED_STACKABLE_PATH_PREFIXES):
+        return None, "stackable_blocked_path"
+    if item_id >= 100000:
+        return None, "stackable_high_item_id"
+
     attach_type = clean_key_value(first_value(content, "attach type", ""))
     if attach_type not in TRADEABLE_ATTACH_TYPES:
         return None, "not_tradeable"
@@ -667,7 +701,8 @@ def parse_stackable_file(path, item_id, pvf_root):
         return None, "consumable_blocked_stackable_type"
 
     price = parse_scalar(first_value(content, "price", 0), 0)
-    stack_limit = parse_scalar(first_value(content, "stack limit", 1), 1)
+    stack_limit_raw = first_value(content, "stack limit", None)
+    stack_limit = parse_scalar(stack_limit_raw, 1000 if stack_limit_raw is None else 1)
     if stack_limit <= 1:
         return None, "stackable_not_stackable"
 
@@ -677,9 +712,8 @@ def parse_stackable_file(path, item_id, pvf_root):
     if base_price <= 0:
         return None, "stackable_no_price_not_allowlisted"
 
-    policy = stackable_policy(stack_type, rarity, stack_limit)
+    policy = promote_common_stackable(item_id, stackable_policy(stack_type, rarity, stack_limit))
 
-    rel_file = str(Path(path).resolve().relative_to(pvf_root.resolve())).replace("\\", "/")
     item = {
         "type": "stackable",
         "item_id": item_id,
@@ -733,7 +767,10 @@ def scan_files(pvf_root, rel_dir, extension, item_id_by_path, parser):
             policy = equipment_policy(item["rarity"], item["level"])
             profile = make_profile(item, "equipment", 11000 + item["rarity"], policy)
         else:
-            policy = stackable_policy(item["stackable_type"], item["rarity"], item["stack_limit"])
+            policy = promote_common_stackable(
+                item["item_id"],
+                stackable_policy(item["stackable_type"], item["rarity"], item["stack_limit"])
+            )
             category = item["stackable_category"]
             raw_category_code = 13000 if category == "material" else 12000
             profile = make_profile(item, category, raw_category_code, policy)
