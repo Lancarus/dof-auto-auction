@@ -158,10 +158,10 @@ function _randomizePrice(basePrice) {
     return Math.floor(basePrice * factor);
 }
 
-function _specialEquipmentPrice(unitPrice) {
-    var boosted = Math.max(1, Math.floor(unitPrice * 10));
-    var text = String(boosted);
-    if (text.length <= 2) return boosted;
+function _equipmentOnesTailPrice(unitPrice, multiplier) {
+    var price = Math.max(1, Math.floor(unitPrice * (multiplier || 1)));
+    var text = String(price);
+    if (text.length <= 2) return price;
 
     var result = text.substring(0, 2);
     for (var i = 2; i < text.length; i++) {
@@ -172,8 +172,10 @@ function _specialEquipmentPrice(unitPrice) {
 
 function _maybeSpecialEquipmentPrice(profile, unitPrice) {
     if (!profile || profile.category !== 'equipment') return unitPrice;
-    if (Math.random() >= 0.03) return unitPrice;
-    return _specialEquipmentPrice(unitPrice);
+    var roll = Math.random();
+    if (roll < 0.03) return _equipmentOnesTailPrice(unitPrice, 10);
+    if (roll < 0.06) return _equipmentOnesTailPrice(unitPrice, 1);
+    return unitPrice;
 }
 
 /** 是否高峰时段 */
