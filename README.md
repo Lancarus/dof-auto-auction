@@ -683,9 +683,9 @@ python -m venv .venv
 | 装备稀有度 | 装备 `rarity >= 4` 过滤；`rarity == 2` 且等级 >= 40 进入 B 档，库存 3-5；`rarity == 3` 且等级 >= 40 进入 A 档，库存 1-2 |
 | 装备价格 | 基础价只取 `value / 5`，再乘装备种类、等级、稀有度、传承、套装因子 |
 | 材料类道具 | `material`、`material expert job`、`enchant waste`、`waste`、`unlimited waste` 生成 100-25000 的稳定波动价格 |
-| 消耗类道具 | 仅导入 `stack limit > 1` 的可堆叠物品；有 `price` 时以 `price` 为上限生成稳定价格；无 `price` 时仅白名单类型进入；`stackable type` 为 `recipe`、`upgradable legacy`、`multi upgradable legacy`、`multi upgradable legacy bonus cera` 的消耗品过滤 |
+| 消耗类道具 | 仅导入常规可见的可堆叠物品；过滤 `cash/`、`event/`、`emblem/`、`twdf/` 等特殊目录；有 `price` 时以 `price` 为上限生成稳定价格；`stackable type` 为 `recipe`、`avatar emblem`、`upgradable legacy`、`multi upgradable legacy`、`multi upgradable legacy bonus cera` 的消耗品过滤 |
 | 道具档位 | 道具 `rarity >= 3` 进入 A 档；`rarity == 2` 至少进入 B 档；`rarity <= 1` 按 `stackable type` 判断 |
-| 堆叠数量 | 材料/消耗品目标约 10 条挂单；单条数量优先 300-500，若堆叠上限低于 500 则使用堆叠上限 |
+| 堆叠数量 | 材料/消耗品目标约 10 条挂单；PVF 未声明 `stack limit` 的常规道具按 1000 处理；单条数量优先 300-500，若堆叠上限低于 500 则使用堆叠上限 |
 
 默认补货查询只取 A/B 档候选；C 档保留画像但通常不进入默认补货池。
 
