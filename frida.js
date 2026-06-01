@@ -37,6 +37,7 @@ const globalContext = (() => {
 	const _moduleCache = {};
 	/** 用于程序第一次启动与结束时控制freeze类型模块卸载 */
 	let _deactivateFreeze = false;
+	let _started = false;
 
 	////////////////////////////////////////////////////////////////////////
 	// 公共
@@ -540,6 +541,9 @@ const globalContext = (() => {
 
 	/** 内部启动入口 */
 	function _start() {
+		if (_started)
+			return;
+		_started = true;
 		try {
 			context.main.log('---------------- [Frida Init] Start ----------------');
 			// 初始化主要配置
@@ -551,6 +555,7 @@ const globalContext = (() => {
 			_moduleManager.loadAll();
 			context.main.log(`================ ALL modules loaded ================`);
 		} catch (error) {
+			_started = false;
 			context.main.log(LOG_LEVELS.ERROR, '[Start]', error.stack)
 		}
 	}
@@ -585,18 +590,29 @@ const globalContext = (() => {
 
 /** 延迟加载插件 */
 function awake() {
+	let checkArgvTriggered = false;
 	// Hook check_argv
-	Interceptor.attach(ptr(0x829EA5A), {
+	try {
+		Interceptor.attach(ptr(0x829EA5A), {
 
-		onEnter: function (args) {
-		},
-		onLeave: function (retval) {
-			// 等待check_argv函数执行结束，并给 dp2 后续 hook 安装留出时间。
-			setTimeout(function () {
-				globalContext._start();
-			}, 5000);
-		}
-	});
+			onEnter: function (args) {
+			},
+			onLeave: function (retval) {
+				checkArgvTriggered = true;
+				// 等待check_argv函数执行结束，并给 dp2 后续 hook 安装留出时间。
+				setTimeout(function () {
+					globalContext._start();
+				}, 5000);
+			}
+		});
+	} catch (error) {
+		console.log('[Frida Error] failed to hook check_argv: ', error);
+	}
+
+	setTimeout(function () {
+		if (!checkArgvTriggered)
+			globalContext._start();
+	}, 15000);
 }
 
 // 导出RPC接口
